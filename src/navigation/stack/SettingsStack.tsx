@@ -9,6 +9,8 @@ import EvolutionConnectionScreen from '@/screens/settings/EvolutionConnectionScr
 import AutomationsScreen from '@/screens/settings/AutomationsScreen';
 import AutomationNewScreen from '@/screens/settings/AutomationNewScreen';
 import AutomationEditorScreen from '@/screens/settings/AutomationEditorScreen';
+import CatalogItemsScreen from '@/screens/settings/CatalogItemsScreen';
+import SchedulingSettingsScreen from '@/screens/settings/SchedulingSettingsScreen';
 
 export type SettingsStackParamList = {
   SettingsScreen: undefined;
@@ -19,6 +21,8 @@ export type SettingsStackParamList = {
   AutomationsScreen: undefined;
   AutomationNewScreen: undefined;
   AutomationEditorScreen: { templateKey?: string; automationId?: number } | undefined;
+  CatalogItemsScreen: undefined;
+  SchedulingSettingsScreen: undefined;
 };
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -65,6 +69,16 @@ export const SettingsStack = () => {
         options={{ headerShown: false, animation: 'slide_from_right' }}
         name="AutomationEditorScreen"
         component={AutomationEditorScreen}
+      />
+      <Stack.Screen
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+        name="CatalogItemsScreen"
+        component={CatalogItemsScreen}
+      />
+      <Stack.Screen
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+        name="SchedulingSettingsScreen"
+        component={SchedulingSettingsScreen}
       />
     </Stack.Navigator>
   );

@@ -1,4 +1,5 @@
 import type { Agent } from './Agent';
+import type { CatalogItem } from './CatalogItem';
 
 export type TaskContact = {
   id: number;
@@ -13,9 +14,12 @@ export type ConversationTask = {
   note: string | null;
   dueAt: string;
   status: 'pending' | 'completed';
+  taskType: 'task' | 'appointment';
+  durationMinutes: number | null;
   completedAt: string | null;
   assignee: Agent | null;
   contact: TaskContact | null;
+  catalogItem: CatalogItem | null;
   conversation: {
     id: number;
     displayId: number;
@@ -32,4 +36,7 @@ export type CreateTaskPayload = {
   assigneeId?: number;
   contactId?: number;
   conversationId?: number;
+  taskType?: 'task' | 'appointment';
+  catalogItemId?: number;
+  durationMinutes?: number;
 };

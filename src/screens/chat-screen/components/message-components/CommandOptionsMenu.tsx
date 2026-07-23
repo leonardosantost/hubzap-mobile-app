@@ -11,7 +11,8 @@ import { Asset, launchCamera, launchImageLibrary } from 'react-native-image-pick
 import { PERMISSIONS, request, RESULTS } from 'react-native-permissions';
 import Animated, { SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAppDispatch } from '@/hooks';
+import { useAppDispatch, useAppSelector } from '@/hooks';
+import { selectSchedulingEnabled } from '@/store/app-features/appFeaturesSelectors';
 import { updateAttachments } from '@/store/conversation/sendMessageSlice';
 import { useRefsContext } from '@/context';
 import { AttachFileIcon, MacrosIcon, PhotosIcon, TasksIconOutline } from '@/svg-icons';
@@ -181,7 +182,7 @@ type AddMenuOption = (typeof ADD_MENU_OPTIONS)[number];
 
 export const validateFileAndSetAttachments = async (dispatch: AppDispatch, attachment: Asset) => {
   const { fileSize } = attachment;
-  if (findFileSize(fileSize) <= MAXIMUM_FILE_UPLOAD_SIZE) {
+  if (findFileSize(fileSize || 0) <= MAXIMUM_FILE_UPLOAD_SIZE) {
     dispatch(updateAttachments([attachment]));
   } else {
     showToast({ message: i18n.t('CONVERSATION.FILE_SIZE_LIMIT') });
@@ -197,6 +198,7 @@ type MenuOptionProps = {
 const MenuOption = (props: MenuOptionProps) => {
   const { index, menuOption, onCreateTask } = props;
   const dispatch = useAppDispatch();
+  const schedulingEnabled = useAppSelector(selectSchedulingEnabled);
   const { macrosListSheetRef } = useRefsContext();
 
   const { animatedStyle, handlers } = useScaleAnimation();
@@ -225,7 +227,11 @@ const MenuOption = (props: MenuOptionProps) => {
             style={tailwind.style(
               'text-base font-inter-normal-20 leading-[18px] tracking-[0.24px] text-gray-950 pl-5',
             )}>
-            {menuOption.titleKey.includes('.') ? i18n.t(menuOption.titleKey) : menuOption.titleKey}
+            {menuOption.id === 'task' && schedulingEnabled
+              ? 'Criar agendamento'
+              : menuOption.titleKey.includes('.')
+                ? i18n.t(menuOption.titleKey)
+                : menuOption.titleKey}
           </Text>
         </Animated.View>
       </Pressable>

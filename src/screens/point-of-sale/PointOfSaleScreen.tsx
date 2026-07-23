@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { NavigationProp, useNavigation } from '@react-navigation/native';
 
 import { Icon, SearchBar } from '@/components-next';
 import {
@@ -27,6 +28,9 @@ import { tailwind } from '@/theme';
 
 type PointOfSaleView = 'checkout' | 'orders' | 'settings';
 type OrderStatus = 'Todos' | 'Pago' | 'Pendente' | 'Cancelado';
+type RootNavigationParamList = {
+  Settings: { screen: 'CatalogItemsScreen' };
+};
 
 type PaymentMethod = {
   id: string;
@@ -503,12 +507,15 @@ const SettingsRow = ({
   title,
   description,
   rightText,
+  onPress,
 }: {
   title: string;
   description: string;
   rightText?: string;
+  onPress?: () => void;
 }) => (
   <Pressable
+    onPress={onPress}
     style={tailwind.style(
       'mx-4 mb-2 flex-row items-center rounded-[8px] border border-blackA-A3 bg-white px-3 py-3',
     )}>
@@ -530,6 +537,7 @@ const SettingsRow = ({
 );
 
 const SettingsView = () => {
+  const navigation = useNavigation<NavigationProp<RootNavigationParamList>>();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
     { id: 'pix', title: 'Pix', enabled: true },
     { id: 'credit_card', title: 'Cartão', enabled: true },
@@ -590,8 +598,9 @@ const SettingsView = () => {
       />
       <SettingsRow
         title="Produtos e serviços local"
-        description="Armazenamento local no Chatwoot server fica para a próxima etapa."
-        rightText="Depois"
+        description="Cadastro local no Chatwoot server para PDV e agenda."
+        rightText="Abrir"
+        onPress={() => navigation.navigate('Settings', { screen: 'CatalogItemsScreen' })}
       />
     </ScrollView>
   );

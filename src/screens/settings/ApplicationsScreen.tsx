@@ -1,13 +1,15 @@
-import React from 'react';
-import { Image, Pressable, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Image, Pressable, ScrollView, Switch } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { AxiosError } from 'axios';
-import { useAppDispatch } from '@/hooks';
+import { useAppDispatch, useAppSelector } from '@/hooks';
 import { inboxActions } from '@/store/inbox/inboxActions';
-import { TeamChatService } from '@/store/team-chat/teamChatService';
+import { TeamChatService, TeamChatStatus } from '@/store/team-chat/teamChatService';
+import { selectSchedulingEnabled } from '@/store/app-features/appFeaturesSelectors';
+import { setSchedulingEnabled } from '@/store/app-features/appFeaturesSlice';
 import { showToast } from '@/utils/toastUtils';
 
 import { Icon } from '@/components-next/common';
@@ -23,6 +25,7 @@ import {
   TelegramIcon,
   WhatsAppIcon,
   ChatIcon,
+  CaretRight,
 } from '@/svg-icons';
 import { tailwind } from '@/theme';
 
@@ -32,6 +35,9 @@ type AppItem = {
   logoUri?: string;
   backgroundColor: string;
   iconSize?: number;
+  description?: string;
+  toggle?: 'scheduling' | 'team_chat';
+  route?: 'CatalogItemsScreen' | 'SchedulingSettingsScreen' | 'AutomationsScreen';
 };
 
 type AppSection = {
@@ -154,12 +160,17 @@ const sections: AppSection[] = [
         name: 'Catálogo',
         icon: <AppGlyph color="#0F766E" type="catalog" />,
         backgroundColor: '#E6F6F3',
+        description: 'Produtos e serviços',
+        route: 'CatalogItemsScreen',
       },
       { name: 'PDV', icon: <AppGlyph color="#7C3AED" type="pos" />, backgroundColor: '#F1EAFF' },
       {
         name: 'Agendamentos',
         icon: <AppGlyph color="#2563EB" type="calendar" />,
         backgroundColor: '#EAF1FF',
+        description: 'Agenda, atendentes e horários',
+        toggle: 'scheduling',
+        route: 'SchedulingSettingsScreen',
       },
       {
         name: 'Olist',
@@ -194,8 +205,20 @@ const sections: AppSection[] = [
   {
     title: 'Funcionalidades',
     items: [
-      { name: 'Chat de Equipe', icon: <ChatIcon stroke="#374151" />, backgroundColor: '#F3F4F6' },
-      { name: 'Automações', icon: <MacrosIcon stroke="#0F766E" />, backgroundColor: '#E6F6F3' },
+      {
+        name: 'Chat de Equipe',
+        icon: <ChatIcon stroke="#374151" />,
+        backgroundColor: '#F3F4F6',
+        description: 'Comunicação interna por equipes',
+        toggle: 'team_chat',
+      },
+      {
+        name: 'Automações',
+        icon: <MacrosIcon stroke="#0F766E" />,
+        backgroundColor: '#E6F6F3',
+        description: 'Fluxos e modelos automáticos',
+        route: 'AutomationsScreen',
+      },
     ],
   },
   {
@@ -242,55 +265,92 @@ const ApplicationsHeader = () => {
   );
 };
 
-const AppCard = ({ item, onPress }: { item: AppItem; onPress: () => void }) => (
-  <Pressable style={tailwind.style('w-1/3 px-1.5 pb-5')} onPress={onPress}>
-    <Animated.View style={tailwind.style('items-center')}>
-      <Animated.View
-        style={[
-          tailwind.style('h-[58px] w-[58px] items-center justify-center rounded-[16px]'),
-          { backgroundColor: item.backgroundColor },
-        ]}>
-        {item.logoUri ? (
-          <Image
-            source={{ uri: item.logoUri }}
-            resizeMode="contain"
-            style={tailwind.style(`h-[${item.iconSize || 42}px]`, `w-[${item.iconSize || 42}px]`)}
-          />
-        ) : (
-          <Icon icon={item.icon} size={item.iconSize || 32} />
-        )}
-      </Animated.View>
+const AppIcon = ({ item }: { item: AppItem }) => (
+  <Animated.View
+    style={[
+      tailwind.style('h-[44px] w-[44px] items-center justify-center rounded-[12px]'),
+      { backgroundColor: item.backgroundColor },
+    ]}>
+    {item.logoUri ? (
+      <Image
+        source={{ uri: item.logoUri }}
+        resizeMode="contain"
+        style={tailwind.style(`h-[${item.iconSize || 34}px]`, `w-[${item.iconSize || 34}px]`)}
+      />
+    ) : (
+      <Icon icon={item.icon} size={item.iconSize || 25} />
+    )}
+  </Animated.View>
+);
+
+const AppListItem = ({
+  item,
+  isEnabled,
+  onPress,
+  onToggle,
+}: {
+  item: AppItem;
+  isEnabled?: boolean;
+  onPress: () => void;
+  onToggle: (value: boolean) => void;
+}) => (
+  <Pressable
+    style={tailwind.style('flex-row items-center border-b border-blackA-A3 px-4 py-3.5')}
+    onPress={onPress}>
+    <AppIcon item={item} />
+    <Animated.View style={tailwind.style('ml-3 flex-1')}>
       <Animated.Text
-        numberOfLines={2}
-        style={tailwind.style(
-          'pt-2 text-center text-sm font-inter-medium-24 leading-[16px] tracking-[0.16px] text-gray-950',
-        )}>
+        numberOfLines={1}
+        style={tailwind.style('text-base font-inter-medium-24 text-gray-950')}>
         {item.name}
       </Animated.Text>
+      <Animated.Text numberOfLines={1} style={tailwind.style('pt-0.5 text-sm text-gray-700')}>
+        {item.description || 'Em breve'}
+      </Animated.Text>
     </Animated.View>
+    {item.toggle ? (
+      <Switch
+        value={!!isEnabled}
+        onValueChange={value => {
+          onToggle(value);
+        }}
+      />
+    ) : item.route ? (
+      <Icon icon={<CaretRight />} size={20} />
+    ) : (
+      <Animated.Text style={tailwind.style('text-xs font-inter-medium-24 text-gray-500')}>
+        Em breve
+      </Animated.Text>
+    )}
   </Pressable>
 );
 
-const AppSectionGrid = ({
+const AppSectionList = ({
   section,
   onItemPress,
+  onItemToggle,
+  getItemEnabled,
 }: {
   section: AppSection;
   onItemPress: (item: AppItem) => void;
+  onItemToggle: (item: AppItem, value: boolean) => void;
+  getItemEnabled: (item: AppItem) => boolean;
 }) => (
-  <Animated.View style={tailwind.style('pt-6')}>
+  <Animated.View style={tailwind.style('pt-5')}>
     <Animated.Text
       style={tailwind.style(
-        'px-4 pb-4 text-base font-inter-medium-24 leading-[20px] tracking-[0.24px] text-gray-950',
+        'px-4 pb-2 text-sm font-inter-medium-24 uppercase tracking-[0.16px] text-gray-700',
       )}>
       {section.title}
     </Animated.Text>
-    <Animated.View style={tailwind.style('flex-row flex-wrap px-2')}>
+    <Animated.View style={tailwind.style('border-t border-blackA-A3')}>
       {section.items.map(item => (
-        <AppCard
+        <AppListItem
           key={`${section.title}-${item.name}`}
           item={item}
+          isEnabled={getItemEnabled(item)}
           onPress={() => onItemPress(item)}
+          onToggle={value => onItemToggle(item, value)}
         />
       ))}
     </Animated.View>
@@ -299,12 +359,20 @@ const AppSectionGrid = ({
 
 const ApplicationsScreen = () => {
   const dispatch = useAppDispatch();
+  const navigation = useNavigation();
+  const schedulingEnabled = useAppSelector(selectSchedulingEnabled);
+  const [teamChat, setTeamChat] = useState<TeamChatStatus | null>(null);
 
-  const handleItemPress = async (item: AppItem) => {
-    if (item.name !== 'Chat de Equipe') return;
+  useEffect(() => {
+    TeamChatService.getStatus()
+      .then(setTeamChat)
+      .catch(() => setTeamChat(null));
+  }, []);
 
+  const enableTeamChat = async () => {
     try {
-      await TeamChatService.enable();
+      const status = await TeamChatService.enable();
+      setTeamChat(status);
       await dispatch(inboxActions.fetchInboxes());
       showToast({ message: 'Chat da Equipe ativado' });
     } catch (error) {
@@ -319,6 +387,39 @@ const ApplicationsScreen = () => {
     }
   };
 
+  const handleItemPress = async (item: AppItem) => {
+    if (item.route) {
+      navigation.navigate(item.route as never);
+      return;
+    }
+
+    if (item.toggle === 'team_chat' && !teamChat?.enabled) {
+      await enableTeamChat();
+      return;
+    }
+  };
+
+  const handleItemToggle = async (item: AppItem, value: boolean) => {
+    if (item.toggle === 'scheduling') {
+      dispatch(setSchedulingEnabled(value));
+      return;
+    }
+
+    if (item.toggle === 'team_chat') {
+      if (value) {
+        await enableTeamChat();
+        return;
+      }
+      showToast({ message: 'A desativação do Chat da Equipe será configurada no servidor.' });
+    }
+  };
+
+  const getItemEnabled = (item: AppItem) => {
+    if (item.toggle === 'scheduling') return schedulingEnabled;
+    if (item.toggle === 'team_chat') return !!teamChat?.enabled;
+    return false;
+  };
+
   return (
     <SafeAreaView edges={['top']} style={tailwind.style('flex-1 bg-white')}>
       <ApplicationsHeader />
@@ -326,7 +427,13 @@ const ApplicationsScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={tailwind.style(`pb-[${TAB_BAR_HEIGHT + 24}px]`)}>
         {sections.map(section => (
-          <AppSectionGrid key={section.title} section={section} onItemPress={handleItemPress} />
+          <AppSectionList
+            key={section.title}
+            section={section}
+            onItemPress={handleItemPress}
+            onItemToggle={handleItemToggle}
+            getItemEnabled={getItemEnabled}
+          />
         ))}
       </ScrollView>
     </SafeAreaView>

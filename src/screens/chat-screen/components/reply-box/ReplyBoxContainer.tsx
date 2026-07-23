@@ -7,6 +7,7 @@ import Animated, {
   LinearTransition,
   useDerivedValue,
   useAnimatedStyle,
+  SharedValue,
   withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -87,10 +88,12 @@ import {
 } from '@/store/copilot/copilotSlice';
 import { executeCopilotAction, sendCopilotFollowUp } from '@/store/copilot/copilotActions';
 import type { CopilotActionKey } from '@/types/Copilot';
+import type { Message, MessageContentAttributes } from '@/types/Message';
 import { handleLaunchCamera } from '../message-components/CommandOptionsMenu';
 import { TaskFormSheet } from '@/screens/inbox/components';
 import { taskActions } from '@/store/task/taskActions';
 import { selectTasks } from '@/store/task/taskSelectors';
+import { selectSchedulingEnabled } from '@/store/app-features/appFeaturesSelectors';
 
 const SHEET_APPEAR_SPRING_CONFIG = {
   damping: 20,
@@ -132,7 +135,9 @@ const BottomSheetContent = () => {
   } = useChatWindowContext();
 
   // Copilot
-  const copilotAbortRef = useRef<{ abort: () => void; unwrap: () => Promise<unknown> }>();
+  const copilotAbortRef = useRef<{ abort: () => void; unwrap: () => Promise<unknown> } | null>(
+    null,
+  );
   const isCopilotActive = useAppSelector(selectIsCopilotActive);
   const isGenerating = useAppSelector(selectIsGenerating);
   const generatedContent = useAppSelector(selectGeneratedContent);
@@ -157,6 +162,7 @@ const BottomSheetContent = () => {
   const { inboxId, canReply } = conversation || {};
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const tasks = useAppSelector(selectTasks);
+  const schedulingEnabled = useAppSelector(selectSchedulingEnabled);
   const taskContact = conversation?.meta?.sender || null;
   const inbox = useAppSelector(state => (inboxId ? selectInboxById(state, inboxId) : undefined));
 
@@ -182,14 +188,15 @@ const BottomSheetContent = () => {
   const shouldShowReplyHeader = inbox && isAnEmailChannel(inbox) && !isPrivate;
 
   const lastEmail = useAppSelector(state =>
-    shouldShowReplyHeader ? getLastEmailInSelectedChat(state, { conversationId }) : null,
+    shouldShowReplyHeader
+      ? (getLastEmailInSelectedChat(state, { conversationId }) as Message | null)
+      : null,
   );
 
   useEffect(() => {
     if (!lastEmail) return;
-    const {
-      contentAttributes: { email: emailAttributes = {} },
-    } = lastEmail;
+    const emailAttributes: Partial<NonNullable<MessageContentAttributes['email']>> =
+      lastEmail.contentAttributes?.email || {};
 
     // Retrieve the email of the current conversation's sender
     const conversationContact = conversation?.meta?.sender?.email || '';
@@ -206,13 +213,13 @@ const BottomSheetContent = () => {
 
     // If the last incoming message sender is different from the conversation contact, add them to the "to"
     // and add the conversation contact to the CC
-    if (!emailAttributes.from.includes(conversationContact)) {
-      to.push(...emailAttributes.from);
+    if (!(emailAttributes.from || []).includes(conversationContact)) {
+      to.push(...(emailAttributes.from || []));
       cc.push(conversationContact);
     }
 
     // Remove the conversation contact's email from the BCC list if present
-    let bcc = (emailAttributes.bcc || []).filter(email => email !== conversationContact);
+    let bcc = (emailAttributes.bcc || []).filter((email: string) => email !== conversationContact);
 
     // Ensure only unique email addresses are in the CC list
     bcc = [...new Set(bcc)];
@@ -241,8 +248,13 @@ const BottomSheetContent = () => {
 
   useEffect(() => {
     dispatch(taskActions.fetchAgents());
-    dispatch(taskActions.fetchTasks({ date: selectedDate }));
-  }, [dispatch, selectedDate]);
+    dispatch(
+      taskActions.fetchTasks({
+        date: selectedDate,
+        taskType: schedulingEnabled ? 'appointment' : 'task',
+      }),
+    );
+  }, [dispatch, schedulingEnabled, selectedDate]);
 
   // Clear quote state when switching conversations to prevent cross-conversation replies
   useEffect(() => {
@@ -527,7 +539,12 @@ const BottomSheetContent = () => {
   };
 
   const handleTaskSaved = () => {
-    dispatch(taskActions.fetchTasks({ date: selectedDate }));
+    dispatch(
+      taskActions.fetchTasks({
+        date: selectedDate,
+        taskType: schedulingEnabled ? 'appointment' : 'task',
+      }),
+    );
   };
 
   const shouldShowCannedResponses = messageContent?.charAt(0) === '/';
@@ -591,7 +608,9 @@ const BottomSheetContent = () => {
             {!isCopilotActive && attachmentsLength === 0 && shouldShowFileUpload && (
               <AddCommandButton
                 onPress={handleShowAddMenuOption}
-                derivedAddMenuOptionStateValue={derivedAddMenuOptionStateValue}
+                derivedAddMenuOptionStateValue={
+                  derivedAddMenuOptionStateValue as unknown as SharedValue<number>
+                }
               />
             )}
             <CopilotButton
@@ -659,6 +678,7 @@ const BottomSheetContent = () => {
         initialContact={taskContact}
         initialContactKey={conversationId}
         onSaved={handleTaskSaved}
+        isAppointmentMode={schedulingEnabled}
       />
     </AnimatedKeyboardStickyView>
   );

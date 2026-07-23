@@ -19,6 +19,10 @@ import { tailwind } from '@/theme';
 import { useAppDispatch, useAppSelector } from '@/hooks';
 import { taskActions } from '@/store/task/taskActions';
 import { selectTaskAgents, selectTasks, selectTasksLoading } from '@/store/task/taskSelectors';
+import {
+  selectSchedulingAgentIds,
+  selectSchedulingEnabled,
+} from '@/store/app-features/appFeaturesSelectors';
 import { showToast } from '@/utils/toastUtils';
 import { InboxHeader, TaskFormSheet, TaskItem, WeeklyPlanner } from './components';
 
@@ -39,11 +43,23 @@ const InboxScreen = () => {
   const tasks = useAppSelector(selectTasks);
   const agents = useAppSelector(selectTaskAgents);
   const isLoading = useAppSelector(selectTasksLoading);
-  const selectedAgent = agents.find(agent => agent.id === selectedAgentId);
+  const schedulingEnabled = useAppSelector(selectSchedulingEnabled);
+  const schedulingAgentIds = useAppSelector(selectSchedulingAgentIds);
+  const visibleAgents = useMemo(() => {
+    if (!schedulingEnabled || schedulingAgentIds.length === 0) return agents;
+    return agents.filter(agent => schedulingAgentIds.includes(agent.id));
+  }, [agents, schedulingAgentIds, schedulingEnabled]);
+  const selectedAgent = visibleAgents.find(agent => agent.id === selectedAgentId);
 
   const fetchTasks = useCallback(() => {
-    return dispatch(taskActions.fetchTasks({ date: selectedDate, assigneeId: selectedAgentId }));
-  }, [dispatch, selectedAgentId, selectedDate]);
+    return dispatch(
+      taskActions.fetchTasks({
+        date: selectedDate,
+        assigneeId: selectedAgentId,
+        taskType: schedulingEnabled ? 'appointment' : 'task',
+      }),
+    );
+  }, [dispatch, schedulingEnabled, selectedAgentId, selectedDate]);
 
   useEffect(() => {
     fetchTasks();
@@ -52,6 +68,12 @@ const InboxScreen = () => {
   useEffect(() => {
     dispatch(taskActions.fetchAgents());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!selectedAgentId) return;
+    if (visibleAgents.some(agent => agent.id === selectedAgentId)) return;
+    setSelectedAgentId(undefined);
+  }, [selectedAgentId, visibleAgents]);
 
   const tasksForSelectedDate = useMemo(
     () => tasks.filter(task => sameDay(new Date(task.dueAt), selectedDate)),
@@ -91,10 +113,12 @@ const InboxScreen = () => {
     return (
       <Animated.View style={tailwind.style('items-center px-8 pt-14')}>
         <Animated.Text style={tailwind.style('text-base font-inter-medium-24 text-gray-800')}>
-          Nenhuma tarefa para este dia
+          {schedulingEnabled ? 'Nenhum agendamento para este dia' : 'Nenhuma tarefa para este dia'}
         </Animated.Text>
         <Animated.Text style={tailwind.style('mt-2 text-center text-sm text-gray-700')}>
-          Use o botão + para criar um novo acompanhamento.
+          {schedulingEnabled
+            ? 'Use o botão + para criar um novo agendamento.'
+            : 'Use o botão + para criar um novo acompanhamento.'}
         </Animated.Text>
       </Animated.View>
     );
@@ -108,6 +132,8 @@ const InboxScreen = () => {
         onPressAgentFilter={() => agentSheetRef.current?.present()}
         onPressAddTask={() => taskFormSheetRef.current?.present()}
         onPressCompleteAll={handleCompleteAll}
+        title={schedulingEnabled ? 'Agenda' : 'Tarefas'}
+        showCompleteAll={!schedulingEnabled}
       />
       <FlashList
         data={tasksForSelectedDate}
@@ -132,6 +158,7 @@ const InboxScreen = () => {
         selectedDate={selectedDate}
         tasks={tasksForSelectedDate}
         onSaved={fetchTasks}
+        isAppointmentMode={schedulingEnabled}
       />
       <BottomSheetModal
         ref={agentSheetRef}
@@ -153,7 +180,7 @@ const InboxScreen = () => {
               </Animated.Text>
               {!selectedAgentId ? <Icon icon={<TickIcon />} size={20} /> : null}
             </Pressable>
-            {agents.map(agent => (
+            {visibleAgents.map(agent => (
               <Pressable
                 key={agent.id}
                 onPress={() => {

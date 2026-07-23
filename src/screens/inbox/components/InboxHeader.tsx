@@ -11,10 +11,19 @@ type InboxHeaderProps = {
   onPressAgentFilter: () => void;
   onPressAddTask: () => void;
   onPressCompleteAll: () => void;
+  title?: string;
+  showCompleteAll?: boolean;
 };
 
 export const InboxHeader = (props: InboxHeaderProps) => {
-  const { selectedAgentName, onPressAgentFilter, onPressAddTask, onPressCompleteAll } = props;
+  const {
+    selectedAgentName,
+    onPressAgentFilter,
+    onPressAddTask,
+    onPressCompleteAll,
+    title = 'Tarefas',
+    showCompleteAll = true,
+  } = props;
 
   return (
     <Animated.View style={[tailwind.style('border-b-[1px] border-b-blackA-A3')]}>
@@ -38,13 +47,15 @@ export const InboxHeader = (props: InboxHeaderProps) => {
             style={tailwind.style(
               'text-[17px] text-center leading-[17px] tracking-[0.32px] font-inter-medium-24 text-gray-950',
             )}>
-            Tarefas
+            {title}
           </Animated.Text>
         </Animated.View>
         <Animated.View style={tailwind.style('flex-1 flex-row justify-end items-center gap-4')}>
-          <Pressable onPress={onPressCompleteAll} hitSlop={12}>
-            <Icon icon={<DoubleCheckIcon />} size={24} />
-          </Pressable>
+          {showCompleteAll ? (
+            <Pressable onPress={onPressCompleteAll} hitSlop={12}>
+              <Icon icon={<DoubleCheckIcon />} size={24} />
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={onPressAddTask}
             hitSlop={12}

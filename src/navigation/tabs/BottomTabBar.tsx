@@ -12,6 +12,7 @@ import { RouteProp } from '@react-navigation/native';
 import { selectCurrentState } from '@/store/conversation/conversationHeaderSlice';
 import { selectAllConversations } from '@/store/conversation/conversationSelectors';
 import { selectNotificationsMetadata } from '@/store/notification/notificationSelectors';
+import { selectSchedulingEnabled } from '@/store/app-features/appFeaturesSelectors';
 
 import {
   ConversationIconFilled,
@@ -82,10 +83,10 @@ const TabBadge = ({ count }: { count: number }) => {
   );
 };
 
-const getTabLabel = (routeName: keyof TabParamList) => {
+const getTabLabel = (routeName: keyof TabParamList, schedulingEnabled: boolean) => {
   switch (routeName) {
     case 'Inbox':
-      return 'Tarefas';
+      return schedulingEnabled ? 'Agenda' : 'Tarefas';
     case 'Conversations':
       return 'Conversas';
     case 'PointOfSale':
@@ -136,6 +137,7 @@ const TabItem = (props: any) => {
   const { handlers, animatedStyle } = useScaleAnimation();
 
   const { onPress, onLongPress, isFocused, options, route, badgeCount } = props;
+  const schedulingEnabled = useAppSelector(selectSchedulingEnabled);
 
   // Memoize hitSlop to prevent new object reference on every render
   const hitSlop = React.useMemo(() => ({ top: 2, left: 10, right: 10, bottom: 10 }), []);
@@ -170,7 +172,7 @@ const TabItem = (props: any) => {
               'mt-[-2px] text-cxs font-inter-medium-24 leading-[14px]',
               isFocused ? 'text-gray-950' : 'text-gray-700',
             )}>
-            {getTabLabel(route.name)}
+            {getTabLabel(route.name, schedulingEnabled)}
           </Animated.Text>
         </Animated.View>
       </Pressable>
