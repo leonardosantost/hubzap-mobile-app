@@ -127,10 +127,6 @@ export const ConversationHeader = ({
     }
   };
 
-  const handleCreatePress = () => {
-    navigation.dispatch(StackActions.push('NewConversationScreen'));
-  };
-
   const filtersAppliedCount = useMemo(
     () => getFiltersAppliedCount(defaultFilterState, filters),
     [filters],
@@ -151,7 +147,6 @@ export const ConversationHeader = ({
         onViewModeChange={onViewModeChange}
         onLeftIconPress={handleLeftIconPress}
         onRightIconPress={handleRightIconPress}
-        onCreatePress={handleCreatePress}
         onClearFilter={handleClearFilter}
         title={title}
         onBack={onBack}

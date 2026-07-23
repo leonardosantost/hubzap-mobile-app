@@ -10,6 +10,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 import { useChatWindowContext, useRefsContext } from '@/context';
 import {
@@ -87,6 +88,9 @@ import {
 import { executeCopilotAction, sendCopilotFollowUp } from '@/store/copilot/copilotActions';
 import type { CopilotActionKey } from '@/types/Copilot';
 import { handleLaunchCamera } from '../message-components/CommandOptionsMenu';
+import { TaskFormSheet } from '@/screens/inbox/components';
+import { taskActions } from '@/store/task/taskActions';
+import { selectTasks } from '@/store/task/taskSelectors';
 
 const SHEET_APPEAR_SPRING_CONFIG = {
   damping: 20,
@@ -135,6 +139,7 @@ const BottomSheetContent = () => {
   const originalContent = useAppSelector(selectOriginalContent);
   const followUpContext = useAppSelector(selectFollowUpContext);
   const { toneSelectionSheetRef } = useRefsContext();
+  const taskFormSheetRef = useRef<BottomSheetModal>(null);
 
   // Reset copilot state and abort in-flight requests when conversation changes or unmount
   useEffect(() => {
@@ -150,7 +155,14 @@ const BottomSheetContent = () => {
 
   const conversation = useAppSelector(state => selectConversationById(state, conversationId));
   const { inboxId, canReply } = conversation || {};
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const tasks = useAppSelector(selectTasks);
+  const taskContact = conversation?.meta?.sender || null;
   const inbox = useAppSelector(state => (inboxId ? selectInboxById(state, inboxId) : undefined));
+
+  useEffect(() => {
+    setSelectedDate(new Date());
+  }, [conversationId]);
 
   const selectAgents = useAppSelector(selectAssignableParticipantsByInboxId);
   const agents = inboxId ? selectAgents(inboxId, '') : [];
@@ -226,6 +238,11 @@ const BottomSheetContent = () => {
       dispatch(setQuoteMessage(null));
     }
   }, [inbox, canReply, dispatch]);
+
+  useEffect(() => {
+    dispatch(taskActions.fetchAgents());
+    dispatch(taskActions.fetchTasks({ date: selectedDate }));
+  }, [dispatch, selectedDate]);
 
   // Clear quote state when switching conversations to prevent cross-conversation replies
   useEffect(() => {
@@ -504,6 +521,15 @@ const BottomSheetContent = () => {
     handleLaunchCamera(dispatch);
   };
 
+  const handleCreateTask = () => {
+    setAddMenuOptionSheetState(false);
+    taskFormSheetRef.current?.present();
+  };
+
+  const handleTaskSaved = () => {
+    dispatch(taskActions.fetchTasks({ date: selectedDate }));
+  };
+
   const shouldShowCannedResponses = messageContent?.charAt(0) === '/';
 
   return (
@@ -620,12 +646,20 @@ const BottomSheetContent = () => {
       </Animated.View>
 
       {!isCopilotActive && isAddMenuOptionSheetOpen ? (
-        <CommandOptionsMenu />
+        <CommandOptionsMenu onCreateTask={handleCreateTask} />
       ) : !isCopilotActive && attachmentsLength > 0 ? (
         <AttachedMedia />
       ) : null}
 
       <ToneSelectionSheet ref={toneSelectionSheetRef} onSelectTone={handleToneSelected} />
+      <TaskFormSheet
+        sheetRef={taskFormSheetRef}
+        selectedDate={selectedDate}
+        tasks={tasks}
+        initialContact={taskContact}
+        initialContactKey={conversationId}
+        onSaved={handleTaskSaved}
+      />
     </AnimatedKeyboardStickyView>
   );
 };

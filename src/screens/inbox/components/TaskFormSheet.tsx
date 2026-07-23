@@ -24,6 +24,8 @@ type TaskFormSheetProps = {
   selectedDate: Date;
   tasks: ConversationTask[];
   onSaved: () => void;
+  initialContact?: Contact | null;
+  initialContactKey?: number;
 };
 
 const formatDate = (date: Date) =>
@@ -39,7 +41,14 @@ const timeSlots = Array.from({ length: 21 }, (_, index) => {
   };
 });
 
-export const TaskFormSheet = ({ sheetRef, selectedDate, tasks, onSaved }: TaskFormSheetProps) => {
+export const TaskFormSheet = ({
+  sheetRef,
+  selectedDate,
+  tasks,
+  onSaved,
+  initialContact,
+  initialContactKey,
+}: TaskFormSheetProps) => {
   const dispatch = useAppDispatch();
   const agents = useAppSelector(selectTaskAgents);
   const isSaving = useAppSelector(selectTasksSaving);
@@ -58,6 +67,13 @@ export const TaskFormSheet = ({ sheetRef, selectedDate, tasks, onSaved }: TaskFo
       setDueDate(selectedDate);
     }
   }, [selectedDate, sheetRef]);
+
+  useEffect(() => {
+    if (!initialContact) return;
+    setContact(initialContact);
+    setContactQuery('');
+    setContactResults([]);
+  }, [initialContact, initialContactKey]);
 
   useEffect(() => {
     if (contactQuery.trim().length < 2) {

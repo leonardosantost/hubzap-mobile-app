@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch } from '@/hooks';
 import { updateAttachments } from '@/store/conversation/sendMessageSlice';
 import { useRefsContext } from '@/context';
-import { AttachFileIcon, MacrosIcon, PhotosIcon } from '@/svg-icons';
+import { AttachFileIcon, MacrosIcon, PhotosIcon, TasksIconOutline } from '@/svg-icons';
 import { tailwind } from '@/theme';
 import { useHaptic, useScaleAnimation } from '@/utils';
 import { Icon } from '@/components-next/common';
@@ -152,6 +152,12 @@ const handleAttachFile = async (dispatch: AppDispatch) => {
 
 const ADD_MENU_OPTIONS = [
   {
+    id: 'task',
+    icon: <TasksIconOutline />,
+    titleKey: 'Criar tarefa',
+    handlePress: () => {},
+  },
+  {
     id: 'photos',
     icon: <PhotosIcon />,
     titleKey: 'CONVERSATION_ATTACHMENT.OPTIONS.PHOTOS',
@@ -171,6 +177,8 @@ const ADD_MENU_OPTIONS = [
   },
 ];
 
+type AddMenuOption = (typeof ADD_MENU_OPTIONS)[number];
+
 export const validateFileAndSetAttachments = async (dispatch: AppDispatch, attachment: Asset) => {
   const { fileSize } = attachment;
   if (findFileSize(fileSize) <= MAXIMUM_FILE_UPLOAD_SIZE) {
@@ -182,11 +190,12 @@ export const validateFileAndSetAttachments = async (dispatch: AppDispatch, attac
 
 type MenuOptionProps = {
   index: number;
-  menuOption: (typeof ADD_MENU_OPTIONS)[0];
+  menuOption: AddMenuOption;
+  onCreateTask?: () => void;
 };
 
 const MenuOption = (props: MenuOptionProps) => {
-  const { index, menuOption } = props;
+  const { index, menuOption, onCreateTask } = props;
   const dispatch = useAppDispatch();
   const { macrosListSheetRef } = useRefsContext();
 
@@ -195,6 +204,10 @@ const MenuOption = (props: MenuOptionProps) => {
 
   const handlePress = () => {
     hapticSelection?.();
+    if (menuOption.id === 'task') {
+      onCreateTask?.();
+      return;
+    }
     menuOption?.handlePress(dispatch);
     if (menuOption.id === 'macros') {
       macrosListSheetRef.current?.present();
@@ -212,7 +225,7 @@ const MenuOption = (props: MenuOptionProps) => {
             style={tailwind.style(
               'text-base font-inter-normal-20 leading-[18px] tracking-[0.24px] text-gray-950 pl-5',
             )}>
-            {i18n.t(menuOption.titleKey)}
+            {menuOption.titleKey.includes('.') ? i18n.t(menuOption.titleKey) : menuOption.titleKey}
           </Text>
         </Animated.View>
       </Pressable>
@@ -220,19 +233,19 @@ const MenuOption = (props: MenuOptionProps) => {
   );
 };
 
-export const CommandOptionsMenu = () => {
+export const CommandOptionsMenu = ({ onCreateTask }: { onCreateTask?: () => void }) => {
   const { bottom } = useSafeAreaInsets();
   const isAndroid = Platform.OS === 'android';
   const containerHeight = isAndroid
-    ? 165 + (bottom === 0 ? 16 : bottom)
-    : 130 + (bottom === 0 ? 16 : bottom);
+    ? 210 + (bottom === 0 ? 16 : bottom)
+    : 180 + (bottom === 0 ? 16 : bottom);
   return (
     <Animated.View
       entering={SlideInDown.springify().damping(38).stiffness(240)}
       exiting={SlideOutDown.springify().damping(38).stiffness(240)}
       style={tailwind.style('mx-1 pt-2 items-start', `h-[${containerHeight}px]`)}>
       {ADD_MENU_OPTIONS.map((menuOption, index) => {
-        return <MenuOption key={menuOption.id} {...{ menuOption, index }} />;
+        return <MenuOption key={menuOption.id} {...{ menuOption, index, onCreateTask }} />;
       })}
     </Animated.View>
   );

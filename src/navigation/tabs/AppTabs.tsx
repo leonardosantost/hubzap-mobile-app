@@ -2,6 +2,7 @@ import React, { useCallback, useEffect } from 'react';
 import { Platform } from 'react-native';
 import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 
 import { authActions } from '@/store/auth/authActions';
 import * as Sentry from '@sentry/react-native';
@@ -27,7 +28,6 @@ import DashboardScreen from '@/screens/dashboard/DashboardScreen';
 import SearchScreen from '@/screens/search/SearchScreen';
 import { TeamChatScreen } from '@/screens/conversations/TeamChatScreen';
 import { PointOfSaleScreen } from '@/screens/point-of-sale/PointOfSaleScreen';
-import { NewConversationScreen } from '@/screens/conversations/NewConversationScreen';
 
 import { selectInstallationUrl } from '@/store/settings/settingsSelectors';
 import { BottomTabBar } from './BottomTabBar';
@@ -59,7 +59,7 @@ export type TabParamList = {
 };
 
 export type TabBarExcludedScreenParamList = {
-  Tab: undefined;
+  Tab: NavigatorScreenParams<TabParamList> | undefined;
   ChatScreen: {
     conversationId: number;
     primaryActorId?: number;
@@ -71,7 +71,6 @@ export type TabBarExcludedScreenParamList = {
   Dashboard: { url: string };
   Login: undefined;
   SearchScreen: undefined;
-  NewConversationScreen: undefined;
   ImageScreen: undefined;
   ConversationDetails: undefined;
   ConversationAction: undefined;
@@ -219,11 +218,6 @@ export const AppTabs = () => {
           options={{ headerShown: false, animation: 'slide_from_right' }}
           name="SearchScreen"
           component={SearchScreen}
-        />
-        <Stack.Screen
-          options={{ headerShown: false, animation: 'slide_from_bottom' }}
-          name="NewConversationScreen"
-          component={NewConversationScreen}
         />
         <Stack.Screen
           options={{ headerShown: false, animation: 'slide_from_right' }}

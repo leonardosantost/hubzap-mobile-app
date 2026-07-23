@@ -241,10 +241,10 @@ const SettingsScreen = () => {
       badgeType: 'default',
     },
     {
-      title: 'Conexões',
+      title: 'Integrações',
       icon: <LinkIcon />,
-      badgeText: 'Em breve',
-      badgeType: 'default',
+      hasChevron: true,
+      onPressListItem: () => navigation.dispatch(StackActions.push('IntegrationsScreen')),
     },
     {
       title: 'Aplicativos',
@@ -257,8 +257,8 @@ const SettingsScreen = () => {
     {
       title: 'Automações',
       icon: <MacrosIcon stroke={tailwind.color('text-gray-800') as string} />,
-      badgeText: 'powered by n8n',
-      badgeType: 'accent',
+      hasChevron: true,
+      onPressListItem: () => navigation.dispatch(StackActions.push('AutomationsScreen')),
     },
     {
       title: 'Usuários',

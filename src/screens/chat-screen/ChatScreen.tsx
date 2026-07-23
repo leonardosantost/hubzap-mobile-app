@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import PagerView, { PagerViewOnPageSelectedEvent } from 'react-native-pager-view';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { ChatHeaderContainer } from './components';
 import { ConversationActions } from './conversation-actions';
@@ -26,9 +26,9 @@ import { assignableAgentActions } from '@/store/assignable-agent/assignableAgent
 import ActionBottomSheet from '@/navigation/tabs/ActionBottomSheet';
 import { conversationActions } from '@/store/conversation/conversationActions';
 import { TAB_BAR_HEIGHT } from '@/constants';
-import { ErrorIcon } from '@/svg-icons';
+import { CartIcon, ErrorIcon } from '@/svg-icons';
 import { Button } from '@/components-next';
-import { ActivityIndicator, Pressable } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import i18n from '@/i18n';
 import { StackActions, useNavigation } from '@react-navigation/native';
 import { MacrosList } from './components/macros/MacrosList';
@@ -68,6 +68,7 @@ const ConversationPagerView = (props: ChatScreenProps) => {
 };
 
 const ChatScreenWrapper = (props: ChatScreenProps) => {
+  const navigation = useNavigation<NativeStackNavigationProp<TabBarExcludedScreenParamList>>();
   const dispatch = useAppDispatch();
   const { conversationId } = useChatWindowContext();
   const conversation = useAppSelector(state => selectConversationById(state, conversationId));
@@ -87,6 +88,16 @@ const ChatScreenWrapper = (props: ChatScreenProps) => {
     <React.Fragment>
       <ChatHeaderContainer name={name || ''} imageSrc={{ uri: thumbnail || '' }} />
       <ConversationPagerView {...props} />
+      <View pointerEvents="box-none" style={tailwind.style('absolute right-0 top-[148px] z-20')}>
+        <Pressable
+          onPress={() => navigation.navigate('Tab', { screen: 'PointOfSale' })}
+          hitSlop={10}
+          style={tailwind.style(
+            'h-10 w-10 items-center justify-center rounded-l-[8px] bg-blue-800',
+          )}>
+          <CartIcon stroke={tailwind.color('text-white')} />
+        </Pressable>
+      </View>
     </React.Fragment>
   );
 };

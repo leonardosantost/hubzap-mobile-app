@@ -7,11 +7,7 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
-import Animated, {
-  LayoutAnimationConfig,
-  LinearTransition,
-  useAnimatedStyle,
-} from 'react-native-reanimated';
+import Animated, { LayoutAnimationConfig, LinearTransition } from 'react-native-reanimated';
 
 import Svg, { Path, Rect } from 'react-native-svg';
 
@@ -85,12 +81,6 @@ export const MessageTextInput = ({
 }: MessageTextInputProps) => {
   const dispatch = useAppDispatch();
   const messageContent = useAppSelector(selectMessageContent);
-
-  const lockIconAnimatedPosition = useAnimatedStyle(() => {
-    return {
-      bottom: Platform.OS === 'ios' ? 5.5 : 6,
-    };
-  });
 
   const { setAddMenuOptionSheetState, textInputRef, setIsTextInputFocused, conversationId } =
     useChatWindowContext();
@@ -222,7 +212,7 @@ export const MessageTextInput = ({
     <LayoutAnimationConfig skipEntering={true}>
       <Animated.View
         layout={LinearTransition.springify().damping(20).stiffness(120)}
-        style={[tailwind.style('flex-1 my-0.5')]}>
+        style={[tailwind.style('flex-1 my-0.5 relative justify-end')]}>
         <MentionInput
           // @ts-expect-error MentionInput ref typing issue with forwardRef
           ref={textInputRef}
@@ -264,20 +254,19 @@ export const MessageTextInput = ({
           onFocus={handleOnFocus}
           onBlur={handleOnBlur}
         />
-      </Animated.View>
-      <Animated.View
-        style={[
-          // Pre calculated value to position the lock
-          tailwind.style('absolute right-13px]'),
-          lockIconAnimatedPosition,
-        ]}>
-        <Pressable hitSlop={5} onPress={toggleReplyMode}>
-          {isPrivateMessage ? (
-            <Icon size={29} icon={<Locked />} />
-          ) : (
-            <Icon size={29} icon={<Unlock />} />
-          )}
-        </Pressable>
+        <Animated.View
+          style={tailwind.style(
+            'absolute right-[7px]',
+            Platform.OS === 'ios' ? 'bottom-[5.5px]' : 'bottom-1.5',
+          )}>
+          <Pressable hitSlop={5} onPress={toggleReplyMode}>
+            {isPrivateMessage ? (
+              <Icon size={29} icon={<Locked />} />
+            ) : (
+              <Icon size={29} icon={<Unlock />} />
+            )}
+          </Pressable>
+        </Animated.View>
       </Animated.View>
     </LayoutAnimationConfig>
   );

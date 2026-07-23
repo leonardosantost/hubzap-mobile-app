@@ -26,7 +26,6 @@ type ConversationHeaderPresenterProps = {
   onViewModeChange?: (mode: ConversationViewMode) => void;
   onLeftIconPress: () => void;
   onRightIconPress: () => void;
-  onCreatePress: () => void;
   onClearFilter: () => void;
   title?: string;
   onBack?: () => void;
@@ -51,7 +50,6 @@ type RightSectionProps = {
   currentState: HeaderState;
   filtersAppliedCount: number;
   onRightIconPress: () => void;
-  onCreatePress: () => void;
 };
 
 const HeaderTitle = ({ title }: { title?: string }) => (
@@ -171,7 +169,6 @@ const RightSection = ({
   currentState,
   filtersAppliedCount,
   onRightIconPress,
-  onCreatePress,
 }: RightSectionProps) => {
   const { entering, exiting } = useHeaderAnimation();
 
@@ -196,7 +193,7 @@ const RightSection = ({
         )}
       </Pressable>
       {currentState === 'none' ? (
-        <Pressable onPress={onCreatePress} hitSlop={8}>
+        <Pressable onPress={() => {}} hitSlop={8}>
           <Animated.View
             exiting={exiting}
             entering={entering}
@@ -217,7 +214,6 @@ export const ConversationHeaderPresenter = ({
   onViewModeChange,
   onLeftIconPress,
   onRightIconPress,
-  onCreatePress,
   onClearFilter,
   title,
   onBack,
@@ -255,7 +251,6 @@ export const ConversationHeaderPresenter = ({
           currentState={currentState}
           filtersAppliedCount={filtersAppliedCount}
           onRightIconPress={onRightIconPress}
-          onCreatePress={onCreatePress}
         />
       </Animated.View>
     </React.Fragment>

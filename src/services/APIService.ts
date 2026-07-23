@@ -78,6 +78,13 @@ class APIService {
         } else if (nonAccountRoutes.includes(config.url || '')) {
           config.url = `api/v1/${config.url}`;
         }
+        if (config.url?.includes('integrations/evolution_api')) {
+          console.log('[APIService] Evolution request', {
+            baseURL: config.baseURL,
+            url: config.url,
+            hasHeaders: Boolean(headers['access-token'] && headers.client && headers.uid),
+          });
+        }
         return {
           ...config,
           headers: {
