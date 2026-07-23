@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useWindowDimensions } from 'react-native';
+import { Pressable, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { tailwind } from '@/theme';
 
@@ -56,7 +56,12 @@ const buildWeek = (weekStartDate: Date, today: Date): PlannerDay[] =>
     };
   });
 
-export const WeeklyPlanner = () => {
+type WeeklyPlannerProps = {
+  selectedDate: Date;
+  onSelectDate: (date: Date) => void;
+};
+
+export const WeeklyPlanner = ({ selectedDate, onSelectDate }: WeeklyPlannerProps) => {
   const { width } = useWindowDimensions();
   const pageWidth = Math.max(width - 40, 300);
   const today = useMemo(() => new Date(), []);
@@ -98,29 +103,37 @@ export const WeeklyPlanner = () => {
               {week.title}
             </Animated.Text>
             <Animated.View style={tailwind.style('mt-3 flex flex-row gap-1.5')}>
-              {week.days.map(day => (
-                <Animated.View
-                  key={day.key}
-                  style={tailwind.style(
-                    'h-[62px] flex-1 items-center justify-center rounded-lg border-[1px]',
-                    day.isToday ? 'border-blue-600 bg-blue-50' : 'border-blackA-A3 bg-white',
-                  )}>
-                  <Animated.Text
-                    style={tailwind.style(
-                      'text-xs font-inter-420-20 leading-[14px]',
-                      day.isToday ? 'text-blue-700' : 'text-gray-700',
-                    )}>
-                    {day.label}
-                  </Animated.Text>
-                  <Animated.Text
-                    style={tailwind.style(
-                      'pt-1 text-base font-inter-medium-24 leading-[20px]',
-                      day.isToday ? 'text-blue-700' : 'text-gray-950',
-                    )}>
-                    {day.dayNumber}
-                  </Animated.Text>
-                </Animated.View>
-              ))}
+              {week.days.map(day => {
+                const date = new Date(day.key);
+                const isSelected = isSameDay(date, selectedDate);
+                return (
+                  <Pressable
+                    key={day.key}
+                    onPress={() => onSelectDate(date)}
+                    style={tailwind.style('flex-1')}>
+                    <Animated.View
+                      style={tailwind.style(
+                        'h-[62px] items-center justify-center rounded-lg border-[1px]',
+                        isSelected ? 'border-blue-600 bg-blue-50' : 'border-blackA-A3 bg-white',
+                      )}>
+                      <Animated.Text
+                        style={tailwind.style(
+                          'text-xs font-inter-420-20 leading-[14px]',
+                          isSelected ? 'text-blue-700' : 'text-gray-700',
+                        )}>
+                        {day.label}
+                      </Animated.Text>
+                      <Animated.Text
+                        style={tailwind.style(
+                          'pt-1 text-base font-inter-medium-24 leading-[20px]',
+                          isSelected ? 'text-blue-700' : 'text-gray-950',
+                        )}>
+                        {day.dayNumber}
+                      </Animated.Text>
+                    </Animated.View>
+                  </Pressable>
+                );
+              })}
             </Animated.View>
           </Animated.View>
         ))}

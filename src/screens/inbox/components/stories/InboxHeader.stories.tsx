@@ -7,7 +7,10 @@ const meta: Meta<typeof InboxHeader> = {
   title: 'Inbox Screen Header',
   component: InboxHeader,
   args: {
-    markAllAsRead: () => {},
+    selectedAgentName: 'Todos',
+    onPressAgentFilter: () => {},
+    onPressAddTask: () => {},
+    onPressCompleteAll: () => {},
   },
   decorators: [
     Story => (
@@ -40,7 +43,12 @@ export const AllVariants: Story = {
     <ScrollView contentContainerStyle={tailwind.style('flex gap-4 pt-4')}>
       <Title title="Default State" />
       <HeaderContainer>
-        <InboxHeader markAllAsRead={() => {}} />
+        <InboxHeader
+          selectedAgentName="Todos"
+          onPressAgentFilter={() => {}}
+          onPressAddTask={() => {}}
+          onPressCompleteAll={() => {}}
+        />
       </HeaderContainer>
     </ScrollView>
   ),

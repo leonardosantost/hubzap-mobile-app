@@ -4,6 +4,11 @@ import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
+import { AxiosError } from 'axios';
+import { useAppDispatch } from '@/hooks';
+import { inboxActions } from '@/store/inbox/inboxActions';
+import { TeamChatService } from '@/store/team-chat/teamChatService';
+import { showToast } from '@/utils/toastUtils';
 
 import { Icon } from '@/components-next/common';
 import { TAB_BAR_HEIGHT } from '@/constants';
@@ -237,8 +242,8 @@ const ApplicationsHeader = () => {
   );
 };
 
-const AppCard = ({ item }: { item: AppItem }) => (
-  <Pressable style={tailwind.style('w-1/3 px-1.5 pb-5')} onPress={() => {}}>
+const AppCard = ({ item, onPress }: { item: AppItem; onPress: () => void }) => (
+  <Pressable style={tailwind.style('w-1/3 px-1.5 pb-5')} onPress={onPress}>
     <Animated.View style={tailwind.style('items-center')}>
       <Animated.View
         style={[
@@ -266,7 +271,13 @@ const AppCard = ({ item }: { item: AppItem }) => (
   </Pressable>
 );
 
-const AppSectionGrid = ({ section }: { section: AppSection }) => (
+const AppSectionGrid = ({
+  section,
+  onItemPress,
+}: {
+  section: AppSection;
+  onItemPress: (item: AppItem) => void;
+}) => (
   <Animated.View style={tailwind.style('pt-6')}>
     <Animated.Text
       style={tailwind.style(
@@ -276,13 +287,38 @@ const AppSectionGrid = ({ section }: { section: AppSection }) => (
     </Animated.Text>
     <Animated.View style={tailwind.style('flex-row flex-wrap px-2')}>
       {section.items.map(item => (
-        <AppCard key={`${section.title}-${item.name}`} item={item} />
+        <AppCard
+          key={`${section.title}-${item.name}`}
+          item={item}
+          onPress={() => onItemPress(item)}
+        />
       ))}
     </Animated.View>
   </Animated.View>
 );
 
 const ApplicationsScreen = () => {
+  const dispatch = useAppDispatch();
+
+  const handleItemPress = async (item: AppItem) => {
+    if (item.name !== 'Chat de Equipe') return;
+
+    try {
+      await TeamChatService.enable();
+      await dispatch(inboxActions.fetchInboxes());
+      showToast({ message: 'Chat da Equipe ativado' });
+    } catch (error) {
+      const status = (error as AxiosError).response?.status;
+      const message =
+        status === 404
+          ? 'O servidor ainda não possui o Chat da Equipe. Publique a atualização do Chatwoot.'
+          : status === 403
+            ? 'Somente administradores podem ativar o Chat da Equipe.'
+            : 'Não foi possível ativar o Chat da Equipe';
+      showToast({ message });
+    }
+  };
+
   return (
     <SafeAreaView edges={['top']} style={tailwind.style('flex-1 bg-white')}>
       <ApplicationsHeader />
@@ -290,7 +326,7 @@ const ApplicationsScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={tailwind.style(`pb-[${TAB_BAR_HEIGHT + 24}px]`)}>
         {sections.map(section => (
-          <AppSectionGrid key={section.title} section={section} />
+          <AppSectionGrid key={section.title} section={section} onItemPress={handleItemPress} />
         ))}
       </ScrollView>
     </SafeAreaView>

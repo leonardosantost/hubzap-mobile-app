@@ -45,9 +45,18 @@ const getFiltersAppliedCount = (defaultState: FilterState, updatedState: FilterS
 type ConversationHeaderProps = {
   viewMode: ConversationViewMode;
   onViewModeChange: (mode: ConversationViewMode) => void;
+  title?: string;
+  onBack?: () => void;
+  showViewModeTabs?: boolean;
 };
 
-export const ConversationHeader = ({ viewMode, onViewModeChange }: ConversationHeaderProps) => {
+export const ConversationHeader = ({
+  viewMode,
+  onViewModeChange,
+  title,
+  onBack,
+  showViewModeTabs = true,
+}: ConversationHeaderProps) => {
   const currentState = useAppSelector(selectCurrentState);
 
   const filters = useAppSelector(selectFilters);
@@ -139,6 +148,9 @@ export const ConversationHeader = ({ viewMode, onViewModeChange }: ConversationH
         onLeftIconPress={handleLeftIconPress}
         onRightIconPress={handleRightIconPress}
         onClearFilter={handleClearFilter}
+        title={title}
+        onBack={onBack}
+        showViewModeTabs={showViewModeTabs}
       />
       {currentState === 'Filter' ? <ConversationFilterBar /> : null}
     </Animated.View>

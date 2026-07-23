@@ -2,7 +2,14 @@ import React from 'react';
 import { Pressable, Text, ViewStyle } from 'react-native';
 import Animated, { AnimatedStyle } from 'react-native-reanimated';
 import { Icon } from '@/components-next/common';
-import { AddIcon, CheckedIcon, CloseIcon, FilterIcon, UncheckedIcon } from '@/svg-icons';
+import {
+  AddIcon,
+  CheckedIcon,
+  ChevronLeft,
+  CloseIcon,
+  FilterIcon,
+  UncheckedIcon,
+} from '@/svg-icons';
 import { tailwind } from '@/theme';
 import i18n from '@/i18n';
 import { useScaleAnimation } from '@/utils';
@@ -20,12 +27,16 @@ type ConversationHeaderPresenterProps = {
   onLeftIconPress: () => void;
   onRightIconPress: () => void;
   onClearFilter: () => void;
+  title?: string;
+  onBack?: () => void;
+  showViewModeTabs?: boolean;
 };
 
 type LeftSectionProps = {
   currentState: HeaderState;
   isSelectedAll: boolean;
   onLeftIconPress: () => void;
+  onBack?: () => void;
 };
 
 type FilterSectionProps = {
@@ -41,13 +52,13 @@ type RightSectionProps = {
   onRightIconPress: () => void;
 };
 
-const HeaderTitle = () => (
+const HeaderTitle = ({ title }: { title?: string }) => (
   <Animated.View style={tailwind.style('flex-1')}>
     <Text
       style={tailwind.style(
         'text-[17px] font-inter-medium-24 tracking-[0.32px] leading-[17px] text-center text-gray-950',
       )}>
-      {i18n.t('CONVERSATION.HEADER.TITLE')}
+      {title || i18n.t('CONVERSATION.HEADER.TITLE')}
     </Text>
   </Animated.View>
 );
@@ -88,11 +99,25 @@ const ViewModeTabs = ({
   </Animated.View>
 );
 
-const LeftSection = ({ currentState, isSelectedAll, onLeftIconPress }: LeftSectionProps) => {
+const LeftSection = ({
+  currentState,
+  isSelectedAll,
+  onLeftIconPress,
+  onBack,
+}: LeftSectionProps) => {
   const { entering, exiting } = useHeaderAnimation();
 
   if (currentState === 'Filter' || currentState === 'Search') return null;
   if (currentState !== 'Select') {
+    if (onBack) {
+      return (
+        <Animated.View style={tailwind.style('flex-1 items-start')}>
+          <Pressable onPress={onBack} hitSlop={16}>
+            <Icon size={24} icon={<ChevronLeft stroke={tailwind.color('text-gray-950')} />} />
+          </Pressable>
+        </Animated.View>
+      );
+    }
     return <Animated.View style={tailwind.style('flex-1')} />;
   }
 
@@ -193,6 +218,9 @@ export const ConversationHeaderPresenter = ({
   onLeftIconPress,
   onRightIconPress,
   onClearFilter,
+  title,
+  onBack,
+  showViewModeTabs = true,
 }: ConversationHeaderPresenterProps) => {
   const { handlers, animatedStyle } = useScaleAnimation();
 
@@ -204,6 +232,7 @@ export const ConversationHeaderPresenter = ({
           currentState={currentState}
           isSelectedAll={isSelectedAll}
           onLeftIconPress={onLeftIconPress}
+          onBack={onBack}
         />
         {currentState === 'Filter' && (
           <FilterSection
@@ -213,14 +242,14 @@ export const ConversationHeaderPresenter = ({
             animatedStyle={animatedStyle}
           />
         )}
-        <HeaderTitle />
+        <HeaderTitle title={title} />
         <RightSection
           currentState={currentState}
           filtersAppliedCount={filtersAppliedCount}
           onRightIconPress={onRightIconPress}
         />
       </Animated.View>
-      {currentState === 'none' ? (
+      {showViewModeTabs && currentState === 'none' ? (
         <ViewModeTabs
           viewMode={viewMode || 'list'}
           onViewModeChange={onViewModeChange || (() => {})}

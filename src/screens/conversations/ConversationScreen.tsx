@@ -26,6 +26,7 @@ import { StackActions, useNavigation } from '@react-navigation/native';
 import {
   ConversationItemContainer,
   ConversationHeader,
+  TeamChatPinnedItem,
   StatusFilters,
   SortByFilters,
   InboxFilters,
@@ -77,6 +78,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Label } from '@/types';
 import { SalesFunnelBoard } from '@/screens/sales-funnel/SalesFunnelScreen';
 import type { ConversationViewMode } from './components/conversation-header/ConversationHeaderPresenter';
+import { TeamChatService, TeamChatStatus } from '@/store/team-chat/teamChatService';
 
 // The screen list thats need to be checked for refreshing the conversations list
 const REFRESH_SCREEN_LIST = [SCREENS.CONVERSATION, SCREENS.INBOX, SCREENS.SETTINGS];
@@ -161,13 +163,22 @@ const ConversationSearchHeader = ({
   selectedLabel,
   onSearchPress,
   onLabelPress,
+  teamChat,
+  onTeamChatPress,
+  showTeamChatShortcut,
 }: {
   labels: Label[];
   selectedLabel: string;
   onSearchPress: () => void;
   onLabelPress: (label: string) => void;
+  teamChat: TeamChatStatus | null;
+  onTeamChatPress: () => void;
+  showTeamChatShortcut: boolean;
 }) => (
   <>
+    {showTeamChatShortcut && teamChat?.enabled && teamChat.inboxId ? (
+      <TeamChatPinnedItem onPress={onTeamChatPress} />
+    ) : null}
     <Pressable onPress={onSearchPress} style={tailwind.style('pt-3 pb-1')}>
       <SearchBar
         editable={false}
@@ -184,7 +195,7 @@ const ConversationSearchHeader = ({
   </>
 );
 
-const ConversationList = () => {
+const ConversationList = ({ showTeamChatShortcut = true }: { showTeamChatShortcut?: boolean }) => {
   const { dismissAll } = useBottomSheetModal();
   const dispatch = useAppDispatch();
   const navigation = useNavigation();
@@ -196,6 +207,7 @@ const ConversationList = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   // This is used for pagination
   const [pageNumber, setPageNumber] = useState(1);
+  const [teamChat, setTeamChat] = useState<TeamChatStatus | null>(null);
   const isLoadingMoreLabels = useRef(false);
   const userId = useAppSelector(selectUserId);
 
@@ -225,6 +237,12 @@ const ConversationList = () => {
   // Reset last active timestamp when the conversation screen is opened
   useEffect(() => {
     AsyncStorage.removeItem(LAST_ACTIVE_TIMESTAMP_KEY);
+  }, []);
+
+  useEffect(() => {
+    TeamChatService.getStatus()
+      .then(setTeamChat)
+      .catch(() => setTeamChat(null));
   }, []);
 
   useEffect(() => {
@@ -371,6 +389,11 @@ const ConversationList = () => {
     navigation.dispatch(StackActions.push('SearchScreen'));
   }, [navigation]);
 
+  const handleTeamChatPress = useCallback(() => {
+    if (!teamChat?.inboxId) return;
+    navigation.dispatch(StackActions.push('TeamChatScreen', { inboxId: teamChat.inboxId }));
+  }, [navigation, teamChat]);
+
   const handleLabelPress = useCallback(
     (label: string) => {
       const updatedFilters = { ...filters, label };
@@ -390,9 +413,20 @@ const ConversationList = () => {
         selectedLabel={filters.label}
         onSearchPress={handleSearchPress}
         onLabelPress={handleLabelPress}
+        teamChat={teamChat}
+        onTeamChatPress={handleTeamChatPress}
+        showTeamChatShortcut={showTeamChatShortcut}
       />
     ),
-    [filters.label, handleLabelPress, handleSearchPress, labels],
+    [
+      filters.label,
+      handleLabelPress,
+      handleSearchPress,
+      handleTeamChatPress,
+      labels,
+      showTeamChatShortcut,
+      teamChat,
+    ],
   );
 
   const scrollHandler = useAnimatedScrollHandler({
@@ -447,7 +481,17 @@ const ConversationList = () => {
   );
 };
 
-const ConversationScreen = () => {
+type ConversationScreenProps = {
+  title?: string;
+  onBack?: () => void;
+  showViewModeTabs?: boolean;
+};
+
+const ConversationScreen = ({
+  title,
+  onBack,
+  showViewModeTabs = true,
+}: ConversationScreenProps) => {
   const currentBottomSheet = useAppSelector(selectBottomSheetState);
   const dispatch = useAppDispatch();
   const [viewMode, setViewMode] = useState<ConversationViewMode>('list');
@@ -492,8 +536,18 @@ const ConversationScreen = () => {
         barStyle={'dark-content'}
       />
       <ConversationListStateProvider>
-        <ConversationHeader viewMode={viewMode} onViewModeChange={setViewMode} />
-        {viewMode === 'list' ? <ConversationList /> : <SalesFunnelBoard />}
+        <ConversationHeader
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          title={title}
+          onBack={onBack}
+          showViewModeTabs={showViewModeTabs}
+        />
+        {!showViewModeTabs || viewMode === 'list' ? (
+          <ConversationList showTeamChatShortcut={!title} />
+        ) : (
+          <SalesFunnelBoard />
+        )}
         <BottomSheetModal
           ref={filtersModalSheetRef}
           backdropComponent={BottomSheetBackdrop}

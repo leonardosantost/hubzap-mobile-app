@@ -1,198 +1,180 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, RefreshControl, StatusBar } from 'react-native';
-import Animated, {
-  LinearTransition,
-  runOnJS,
-  SharedValue,
-  useAnimatedScrollHandler,
-} from 'react-native-reanimated';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, StatusBar } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FlashList, ListRenderItem } from '@shopify/flash-list';
+import { FlashList } from '@shopify/flash-list';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { StackActions, useNavigation } from '@react-navigation/native';
 
 import { TAB_BAR_HEIGHT } from '@/constants';
-import { InboxListStateProvider } from '@/context';
-import type { Notification } from '@/types/Notification';
+import {
+  Avatar,
+  BottomSheetBackdrop,
+  BottomSheetHeader,
+  BottomSheetWrapper,
+  Icon,
+} from '@/components-next';
+import { TickIcon } from '@/svg-icons';
 import { tailwind } from '@/theme';
 import { useAppDispatch, useAppSelector } from '@/hooks';
-import { notificationActions } from '@/store/notification/notificationAction';
-import {
-  selectIsAllNotificationsFetched,
-  selectIsLoadingNotifications,
-  getFilteredNotifications,
-} from '@/store/notification/notificationSelectors';
-import { InboxHeader, InboxItemContainer, WeeklyPlanner } from './components';
-import { useInboxListStateContext } from '@/context';
-import { resetNotifications } from '@/store/notification/notificationSlice';
+import { taskActions } from '@/store/task/taskActions';
+import { selectTaskAgents, selectTasks, selectTasksLoading } from '@/store/task/taskSelectors';
 import { showToast } from '@/utils/toastUtils';
-import i18n from '@/i18n';
-import { selectSortOrder } from '@/store/notification/notificationFilterSlice';
-import { EmptyStateIcon } from '@/svg-icons';
-import { InboxSortTypes } from '@/store/notification/notificationTypes';
+import { InboxHeader, TaskFormSheet, TaskItem, WeeklyPlanner } from './components';
 
-const AnimatedFlashlist = Animated.createAnimatedComponent(FlashList<Notification>);
-
-const InboxList = () => {
-  const [pageNumber, setPageNumber] = useState(1);
-
-  const [isFlashListReady, setFlashListReady] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const isNotificationsLoading = useAppSelector(selectIsLoadingNotifications);
-  const isAllNotificationsFetched = useAppSelector(selectIsAllNotificationsFetched);
-  const sortOrder = useAppSelector(selectSortOrder);
-
-  const notifications = useAppSelector(state => getFilteredNotifications(state, sortOrder));
-
-  const previousSortOrder = useRef(sortOrder);
-
-  const dispatch = useAppDispatch();
-
-  useEffect(() => {
-    if (previousSortOrder.current !== sortOrder) {
-      previousSortOrder.current = sortOrder;
-      clearAndFetchNotifications(sortOrder);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortOrder]);
-
-  // eslint-disable-next-line react/display-name
-  const ListFooterComponent = React.memo(() => {
-    if (isAllNotificationsFetched) return null;
-    return (
-      <Animated.View
-        style={tailwind.style(
-          'flex-1 items-center justify-center pt-8',
-          `pb-[${TAB_BAR_HEIGHT}px]`,
-        )}>
-        {isAllNotificationsFetched ? null : <ActivityIndicator size="small" />}
-      </Animated.View>
-    );
-  });
-
-  useEffect(() => {
-    clearAndFetchNotifications(sortOrder);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const clearAndFetchNotifications = useCallback(async (sortOrder: InboxSortTypes) => {
-    setPageNumber(1);
-    await dispatch(resetNotifications());
-    fetchNotifications(sortOrder);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const fetchNotifications = useCallback(
-    async (sortOrder: InboxSortTypes, page: number = 1) => {
-      dispatch(notificationActions.fetchNotifications({ page, sort_order: sortOrder }));
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
-
-  const onChangePageNumber = () => {
-    const nextPageNumber = pageNumber + 1;
-    setPageNumber(nextPageNumber);
-    fetchNotifications(sortOrder, nextPageNumber);
-  };
-
-  const handleOnEndReached = () => {
-    const shouldLoadMoreConversations =
-      isFlashListReady && !isAllNotificationsFetched && !isNotificationsLoading;
-    if (shouldLoadMoreConversations) {
-      onChangePageNumber();
-    }
-  };
-
-  const handleRefresh = useCallback(() => {
-    setFlashListReady(false);
-    setIsRefreshing(true);
-    clearAndFetchNotifications(sortOrder).finally(() => {
-      setIsRefreshing(false);
-    });
-  }, [clearAndFetchNotifications, sortOrder]);
-
-  const { openedRowIndex } = useInboxListStateContext();
-
-  const handleRender: ListRenderItem<Notification> = ({ item, index }) => {
-    return (
-      <InboxItemContainer
-        item={item}
-        index={index}
-        openedRowIndex={openedRowIndex as SharedValue<number | null>}
-      />
-    );
-  };
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onBeginDrag: () => {
-      openedRowIndex.value = -1;
-      if (!isFlashListReady) {
-        runOnJS(setFlashListReady)(true);
-      }
-    },
-  });
-
-  const shouldShowEmptyLoader = isNotificationsLoading && notifications.length === 0;
-
-  const ListHeaderComponent = <WeeklyPlanner />;
-
-  return shouldShowEmptyLoader ? (
-    <Animated.View
-      style={tailwind.style('flex-1 items-center justify-center', `pb-[${TAB_BAR_HEIGHT}px]`)}>
-      <ActivityIndicator />
-    </Animated.View>
-  ) : notifications.length === 0 ? (
-    <Animated.ScrollView
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
-      contentContainerStyle={tailwind.style('flex-grow', `pb-[${TAB_BAR_HEIGHT}px]`)}>
-      {ListHeaderComponent}
-      <Animated.View style={tailwind.style('flex-1 items-center justify-center px-4')}>
-        <EmptyStateIcon />
-        <Animated.Text style={tailwind.style('pt-6 text-md tracking-[0.32px] text-gray-800')}>
-          {i18n.t('NOTIFICATION.EMPTY')}
-        </Animated.Text>
-      </Animated.View>
-    </Animated.ScrollView>
-  ) : (
-    <AnimatedFlashlist
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
-      layout={LinearTransition.springify().damping(18).stiffness(120)}
-      showsVerticalScrollIndicator={false}
-      data={notifications}
-      estimatedItemSize={71}
-      onScroll={scrollHandler}
-      onEndReached={handleOnEndReached}
-      onEndReachedThreshold={0.5}
-      ListHeaderComponent={ListHeaderComponent}
-      ListFooterComponent={ListFooterComponent}
-      renderItem={handleRender}
-      contentContainerStyle={tailwind.style(`pb-[${TAB_BAR_HEIGHT - 1}px]`)}
-    />
-  );
-};
+const sameDay = (first: Date, second: Date) =>
+  first.getFullYear() === second.getFullYear() &&
+  first.getMonth() === second.getMonth() &&
+  first.getDate() === second.getDate();
 
 const InboxScreen = () => {
   const dispatch = useAppDispatch();
+  const navigation = useNavigation();
+  const taskFormSheetRef = useRef<BottomSheetModal>(null);
+  const agentSheetRef = useRef<BottomSheetModal>(null);
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [selectedAgentId, setSelectedAgentId] = useState<number | undefined>();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Memoize the markAllAsRead callback
-  const markAllAsRead = useCallback(async () => {
-    await dispatch(notificationActions.markAllAsRead());
-    showToast({
-      message: i18n.t('NOTIFICATION.ALERTS.MARK_ALL_READ'),
-    });
+  const tasks = useAppSelector(selectTasks);
+  const agents = useAppSelector(selectTaskAgents);
+  const isLoading = useAppSelector(selectTasksLoading);
+  const selectedAgent = agents.find(agent => agent.id === selectedAgentId);
+
+  const fetchTasks = useCallback(() => {
+    return dispatch(taskActions.fetchTasks({ date: selectedDate, assigneeId: selectedAgentId }));
+  }, [dispatch, selectedAgentId, selectedDate]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
+
+  useEffect(() => {
+    dispatch(taskActions.fetchAgents());
   }, [dispatch]);
+
+  const tasksForSelectedDate = useMemo(
+    () => tasks.filter(task => sameDay(new Date(task.dueAt), selectedDate)),
+    [selectedDate, tasks],
+  );
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchTasks();
+    setIsRefreshing(false);
+  };
+
+  const handleComplete = async (taskId: number) => {
+    await dispatch(taskActions.completeTask(taskId)).unwrap();
+  };
+
+  const handleCompleteAll = async () => {
+    if (!tasksForSelectedDate.length) return;
+    await Promise.all(
+      tasksForSelectedDate.map(task => dispatch(taskActions.completeTask(task.id)).unwrap()),
+    );
+    showToast({ message: 'Tarefas concluídas' });
+  };
+
+  const openConversation = (conversationId?: number) => {
+    if (!conversationId) return;
+    navigation.dispatch(
+      StackActions.push('ChatScreen', {
+        conversationId,
+        isConversationOpenedExternally: false,
+      }),
+    );
+  };
+
+  const renderEmpty = () => {
+    if (isLoading) return <ActivityIndicator style={tailwind.style('mt-12')} />;
+    return (
+      <Animated.View style={tailwind.style('items-center px-8 pt-14')}>
+        <Animated.Text style={tailwind.style('text-base font-inter-medium-24 text-gray-800')}>
+          Nenhuma tarefa para este dia
+        </Animated.Text>
+        <Animated.Text style={tailwind.style('mt-2 text-center text-sm text-gray-700')}>
+          Use o botão + para criar um novo acompanhamento.
+        </Animated.Text>
+      </Animated.View>
+    );
+  };
 
   return (
     <SafeAreaView edges={['top']} style={tailwind.style('flex-1 bg-white')}>
-      <StatusBar
-        translucent
-        backgroundColor={tailwind.color('bg-white')}
-        barStyle={'dark-content'}
+      <StatusBar translucent backgroundColor={tailwind.color('bg-white')} barStyle="dark-content" />
+      <InboxHeader
+        selectedAgentName={selectedAgent?.name || 'Todos'}
+        onPressAgentFilter={() => agentSheetRef.current?.present()}
+        onPressAddTask={() => taskFormSheetRef.current?.present()}
+        onPressCompleteAll={handleCompleteAll}
       />
-      <InboxListStateProvider>
-        <InboxHeader markAllAsRead={markAllAsRead} />
-        <InboxList />
-      </InboxListStateProvider>
+      <FlashList
+        data={tasksForSelectedDate}
+        estimatedItemSize={106}
+        renderItem={({ item }) => (
+          <TaskItem
+            task={item}
+            onComplete={() => handleComplete(item.id)}
+            onPress={() => openConversation(item.conversation?.id)}
+          />
+        )}
+        ListHeaderComponent={
+          <WeeklyPlanner selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+        }
+        ListEmptyComponent={renderEmpty}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
+        contentContainerStyle={tailwind.style(`pb-[${TAB_BAR_HEIGHT + 18}px]`)}
+      />
+
+      <TaskFormSheet
+        sheetRef={taskFormSheetRef}
+        selectedDate={selectedDate}
+        tasks={tasksForSelectedDate}
+        onSaved={fetchTasks}
+      />
+      <BottomSheetModal
+        ref={agentSheetRef}
+        snapPoints={['52%']}
+        enablePanDownToClose
+        backdropComponent={BottomSheetBackdrop}
+        handleIndicatorStyle={tailwind.style('bg-blackA-A6 w-8 h-1 rounded-[11px]')}>
+        <BottomSheetWrapper>
+          <BottomSheetHeader headerText="Filtrar por agente" />
+          <BottomSheetScrollView contentContainerStyle={tailwind.style('pt-3 pb-8')}>
+            <Pressable
+              onPress={() => {
+                setSelectedAgentId(undefined);
+                agentSheetRef.current?.dismiss();
+              }}
+              style={tailwind.style('flex-row items-center px-4 py-3')}>
+              <Animated.Text style={tailwind.style('flex-1 text-base text-gray-950')}>
+                Todos
+              </Animated.Text>
+              {!selectedAgentId ? <Icon icon={<TickIcon />} size={20} /> : null}
+            </Pressable>
+            {agents.map(agent => (
+              <Pressable
+                key={agent.id}
+                onPress={() => {
+                  setSelectedAgentId(agent.id);
+                  agentSheetRef.current?.dismiss();
+                }}
+                style={tailwind.style('flex-row items-center px-4 py-3')}>
+                <Avatar
+                  size="sm"
+                  src={agent.thumbnail ? { uri: agent.thumbnail } : undefined}
+                  name={agent.name || ''}
+                />
+                <Animated.Text style={tailwind.style('ml-3 flex-1 text-base text-gray-950')}>
+                  {agent.name}
+                </Animated.Text>
+                {selectedAgentId === agent.id ? <Icon icon={<TickIcon />} size={20} /> : null}
+              </Pressable>
+            ))}
+          </BottomSheetScrollView>
+        </BottomSheetWrapper>
+      </BottomSheetModal>
     </SafeAreaView>
   );
 };

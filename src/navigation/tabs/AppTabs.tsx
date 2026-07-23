@@ -25,6 +25,7 @@ import ChatScreen from '@/screens/chat-screen/ChatScreen';
 import ContactDetailsScreen from '@/screens/contact-details/ContactDetailsScreen';
 import DashboardScreen from '@/screens/dashboard/DashboardScreen';
 import SearchScreen from '@/screens/search/SearchScreen';
+import { TeamChatScreen } from '@/screens/conversations/TeamChatScreen';
 
 import { selectInstallationUrl } from '@/store/settings/settingsSelectors';
 import { BottomTabBar } from './BottomTabBar';
@@ -70,6 +71,7 @@ export type TabBarExcludedScreenParamList = {
   ImageScreen: undefined;
   ConversationDetails: undefined;
   ConversationAction: undefined;
+  TeamChatScreen: { inboxId: number };
 };
 const Stack = createNativeStackNavigator<TabBarExcludedScreenParamList>();
 
@@ -208,6 +210,11 @@ export const AppTabs = () => {
           options={{ headerShown: false, animation: 'slide_from_right' }}
           name="SearchScreen"
           component={SearchScreen}
+        />
+        <Stack.Screen
+          options={{ headerShown: false, animation: 'slide_from_right' }}
+          name="TeamChatScreen"
+          component={TeamChatScreen}
         />
       </Stack.Navigator>
     );
