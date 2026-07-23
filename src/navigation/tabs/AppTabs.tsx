@@ -28,6 +28,7 @@ import DashboardScreen from '@/screens/dashboard/DashboardScreen';
 import SearchScreen from '@/screens/search/SearchScreen';
 import { TeamChatScreen } from '@/screens/conversations/TeamChatScreen';
 import { PointOfSaleScreen } from '@/screens/point-of-sale/PointOfSaleScreen';
+import type { PointOfSaleRouteParams } from '@/screens/point-of-sale/PointOfSaleScreen';
 
 import { selectInstallationUrl } from '@/store/settings/settingsSelectors';
 import { BottomTabBar } from './BottomTabBar';
@@ -49,7 +50,7 @@ const Tab = createBottomTabNavigator();
 export type TabParamList = {
   Conversations: undefined;
   Inbox: undefined;
-  PointOfSale: undefined;
+  PointOfSale: PointOfSaleRouteParams | undefined;
   Settings: undefined;
   Login: undefined;
   ConfigInstallationURL: undefined;
@@ -75,6 +76,7 @@ export type TabBarExcludedScreenParamList = {
   ConversationDetails: undefined;
   ConversationAction: undefined;
   TeamChatScreen: { inboxId: number };
+  PointOfSaleScreen: PointOfSaleRouteParams;
 };
 const Stack = createNativeStackNavigator<TabBarExcludedScreenParamList>();
 
@@ -223,6 +225,11 @@ export const AppTabs = () => {
           options={{ headerShown: false, animation: 'slide_from_right' }}
           name="TeamChatScreen"
           component={TeamChatScreen}
+        />
+        <Stack.Screen
+          options={{ headerShown: false, animation: 'slide_from_right' }}
+          name="PointOfSaleScreen"
+          component={PointOfSaleScreen}
         />
       </Stack.Navigator>
     );

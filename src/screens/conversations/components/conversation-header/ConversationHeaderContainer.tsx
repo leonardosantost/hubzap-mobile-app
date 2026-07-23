@@ -27,8 +27,6 @@ import { ConversationFilterBar } from '../conversation-filters';
 import { ConversationHeaderPresenter } from './ConversationHeaderPresenter';
 
 import { useAppDispatch, useAppSelector } from '@/hooks';
-import { useNavigation } from '@react-navigation/native';
-import { StackActions } from '@react-navigation/native';
 import type { ConversationViewMode } from './ConversationHeaderPresenter';
 
 const getFiltersAppliedCount = (defaultState: FilterState, updatedState: FilterState): number => {
@@ -47,6 +45,7 @@ type ConversationHeaderProps = {
   onViewModeChange: (mode: ConversationViewMode) => void;
   title?: string;
   onBack?: () => void;
+  onCreatePress?: () => void;
   showViewModeTabs?: boolean;
 };
 
@@ -55,6 +54,7 @@ export const ConversationHeader = ({
   onViewModeChange,
   title,
   onBack,
+  onCreatePress,
   showViewModeTabs = true,
 }: ConversationHeaderProps) => {
   const currentState = useAppSelector(selectCurrentState);
@@ -62,8 +62,6 @@ export const ConversationHeader = ({
   const filters = useAppSelector(selectFilters);
   const dispatch = useAppDispatch();
   const userId = useAppSelector(selectUserId);
-  const navigation = useNavigation();
-
   const { openedRowIndex } = useConversationListStateContext();
 
   const allConversations = useAppSelector(state =>
@@ -110,9 +108,7 @@ export const ConversationHeader = ({
         dispatch(selectAll(allConversations));
       }
     } else {
-      // Navigate to search screen
-      const pushToSearchScreen = StackActions.push('SearchScreen');
-      navigation.dispatch(pushToSearchScreen);
+      dispatch(setCurrentState('Filter'));
     }
   };
 
@@ -147,6 +143,7 @@ export const ConversationHeader = ({
         onViewModeChange={onViewModeChange}
         onLeftIconPress={handleLeftIconPress}
         onRightIconPress={handleRightIconPress}
+        onCreatePress={onCreatePress}
         onClearFilter={handleClearFilter}
         title={title}
         onBack={onBack}

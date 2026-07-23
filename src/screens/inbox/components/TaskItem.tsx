@@ -1,14 +1,20 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { Avatar, Icon } from '@/components-next';
 import { TickIcon } from '@/svg-icons';
 import type { ConversationTask } from '@/types/Task';
+import { useHaptic } from '@/utils';
 import { tailwind } from '@/theme';
 
 type TaskItemProps = {
   task: ConversationTask;
-  onComplete: () => void;
+  onComplete: () => void | Promise<void>;
   onPress: () => void;
 };
 
@@ -18,29 +24,84 @@ export const TaskItem = ({ task, onComplete, onPress }: TaskItemProps) => {
   const contactName = task.contact?.name || task.conversation?.contactName;
   const title = task.title || contactName || 'Follow-up';
   const description = task.description || task.note;
+  const isCompleted = task.status === 'completed';
+  const haptic = useHaptic('light');
+  const [optimisticCompleted, setOptimisticCompleted] = useState(isCompleted);
+  const checkboxScale = useSharedValue(isCompleted ? 1 : 0);
+  const itemOpacity = useSharedValue(isCompleted ? 0.62 : 1);
+
+  useEffect(() => {
+    setOptimisticCompleted(isCompleted);
+  }, [isCompleted]);
+
+  useEffect(() => {
+    checkboxScale.value = withSpring(optimisticCompleted ? 1 : 0, {
+      damping: 10,
+      stiffness: 220,
+      mass: 0.7,
+    });
+    itemOpacity.value = withTiming(optimisticCompleted ? 0.62 : 1, { duration: 180 });
+  }, [checkboxScale, itemOpacity, optimisticCompleted]);
+
+  const checkStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: checkboxScale.value }],
+    opacity: checkboxScale.value,
+  }));
+
+  const itemStyle = useAnimatedStyle(() => ({
+    opacity: itemOpacity.value,
+  }));
+
+  const handleCheckPress = async () => {
+    const nextValue = !optimisticCompleted;
+    haptic?.();
+    setOptimisticCompleted(nextValue);
+    try {
+      await onComplete();
+    } catch {
+      setOptimisticCompleted(!nextValue);
+    }
+  };
 
   return (
     <Pressable onPress={onPress} style={tailwind.style('px-4 py-3')}>
       <Animated.View
-        style={tailwind.style('border-[1px] border-blackA-A3 rounded-lg bg-white px-3 py-3')}>
+        style={[
+          tailwind.style('border-[1px] border-blackA-A3 rounded-lg bg-white px-3 py-3'),
+          itemStyle,
+        ]}>
         <Animated.View style={tailwind.style('flex-row items-start')}>
+          <Pressable
+            hitSlop={12}
+            onPress={handleCheckPress}
+            style={tailwind.style(
+              'mr-3 mt-0.5 h-[22px] w-[22px] items-center justify-center rounded-full border-[1.5px]',
+              optimisticCompleted ? 'border-gray-500 bg-gray-200' : 'border-gray-500 bg-white',
+            )}>
+            <Animated.View style={checkStyle}>
+              <Icon icon={<TickIcon stroke={tailwind.color('text-gray-700')} />} size={15} />
+            </Animated.View>
+          </Pressable>
           <Animated.View style={tailwind.style('flex-1 pr-3')}>
             <Animated.Text
               numberOfLines={1}
-              style={tailwind.style('text-base font-inter-medium-24 text-gray-950')}>
+              style={tailwind.style(
+                'text-base font-inter-medium-24',
+                optimisticCompleted ? 'text-gray-600' : 'text-gray-950',
+              )}>
               {title}
             </Animated.Text>
             {description ? (
               <Animated.Text
                 numberOfLines={2}
-                style={tailwind.style('mt-1 text-sm font-inter-420-20 text-gray-700')}>
+                style={tailwind.style(
+                  'mt-1 text-sm font-inter-420-20',
+                  optimisticCompleted ? 'text-gray-500' : 'text-gray-700',
+                )}>
                 {description}
               </Animated.Text>
             ) : null}
           </Animated.View>
-          <Pressable hitSlop={12} onPress={onComplete} style={tailwind.style('p-1')}>
-            <Icon icon={<TickIcon stroke={tailwind.color('text-blue-700')} />} size={22} />
-          </Pressable>
         </Animated.View>
         <Animated.View style={tailwind.style('mt-3 flex-row items-center justify-between')}>
           <Animated.View style={tailwind.style('flex-row items-center flex-1')}>
@@ -56,7 +117,11 @@ export const TaskItem = ({ task, onComplete, onPress }: TaskItemProps) => {
               {contactName ? `  ·  ${contactName}` : ''}
             </Animated.Text>
           </Animated.View>
-          <Animated.Text style={tailwind.style('text-sm font-inter-medium-24 text-blue-700')}>
+          <Animated.Text
+            style={tailwind.style(
+              'text-sm font-inter-medium-24',
+              optimisticCompleted ? 'text-gray-500' : 'text-gray-700',
+            )}>
             {timeFormatter.format(new Date(task.dueAt))}
           </Animated.Text>
         </Animated.View>

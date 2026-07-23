@@ -18,6 +18,7 @@ export type ConversationTask = {
   durationMinutes: number | null;
   completedAt: string | null;
   assignee: Agent | null;
+  createdBy: Agent | null;
   contact: TaskContact | null;
   catalogItem: CatalogItem | null;
   conversation: {

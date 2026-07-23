@@ -2,6 +2,7 @@ import { apiService } from '@/services/APIService';
 import type { Agent, Contact } from '@/types';
 import type { CatalogItem } from '@/types/CatalogItem';
 import type { ConversationTask, CreateTaskPayload } from '@/types/Task';
+import { transformAgent } from '@/utils/camelCaseKeys';
 
 type TaskApiResponse = {
   payload: {
@@ -15,6 +16,7 @@ type TaskApiResponse = {
     duration_minutes?: number | null;
     completed_at?: string | null;
     assignee?: Agent;
+    created_by?: Agent;
     contact?: { id: number; name: string | null; thumbnail: string | null };
     catalog_item?: CatalogItem & {
       item_type?: 'product' | 'service';
@@ -41,7 +43,8 @@ const transformTask = (task: TaskApiResponse['payload'][number]): ConversationTa
   taskType: task.task_type ?? 'task',
   durationMinutes: task.duration_minutes ?? null,
   completedAt: task.completed_at ?? null,
-  assignee: task.assignee ?? null,
+  assignee: task.assignee ? transformAgent(task.assignee) : null,
+  createdBy: task.created_by ? transformAgent(task.created_by) : null,
   contact: task.contact ?? null,
   catalogItem: task.catalog_item
     ? {
@@ -101,6 +104,10 @@ export class TaskService {
 
   static async completeTask(taskId: number): Promise<void> {
     await apiService.post(`tasks/${taskId}/complete`);
+  }
+
+  static async reopenTask(taskId: number): Promise<void> {
+    await apiService.post(`tasks/${taskId}/reopen`);
   }
 
   static async getAgents(): Promise<Agent[]> {

@@ -250,7 +250,7 @@
     }
   },
   "FILTER": {
-    "ALL_INBOXES": "Todas as caixas de entrada",
+    "ALL_INBOXES": "Todas as Caixas",
     "FILTER_BY_ASSIGNEE_TYPE": "Filtrar por tipo de responsável",
     "FILTER_BY_CONVERSATION_STATUS": "Filtrar por estado da conversa",
     "SORT_BY": "Ordenar por",
@@ -433,7 +433,7 @@
     "CHANGE_TEAMS": "Time alterado"
   },
   "ERRORS": {
-    "COMMON_ERROR": "Não foi possível conectar ao servidor Woot, por favor tente novamente mais tarde",
+    "COMMON_ERROR": "Não foi possível conectar ao servidor, por favor tente novamente mais tarde",
     "OfFLINE": "Você precisa se conectar ao Wi-Fi ou a uma rede celular para ficar online novamente",
     "CANNOT_FETCH": "Ocorreu um erro ao buscar as informações, por favor, tente novamente",
     "AUTH": "Nome de usuário / senha incorreta. Por favor, tente novamente",

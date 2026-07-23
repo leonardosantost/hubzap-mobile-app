@@ -29,7 +29,7 @@ const taskSlice = createSlice({
         state.isLoading = true;
       })
       .addCase(taskActions.fetchTasks.fulfilled, (state, action) => {
-        tasksAdapter.setAll(state, action.payload);
+        tasksAdapter.upsertMany(state, action.payload);
         state.isLoading = false;
       })
       .addCase(taskActions.fetchTasks.rejected, state => {
@@ -45,7 +45,22 @@ const taskSlice = createSlice({
         state.isSaving = false;
       })
       .addCase(taskActions.completeTask.fulfilled, (state, action: PayloadAction<number>) => {
-        tasksAdapter.removeOne(state, action.payload);
+        tasksAdapter.updateOne(state, {
+          id: action.payload,
+          changes: {
+            status: 'completed',
+            completedAt: new Date().toISOString(),
+          },
+        });
+      })
+      .addCase(taskActions.reopenTask.fulfilled, (state, action: PayloadAction<number>) => {
+        tasksAdapter.updateOne(state, {
+          id: action.payload,
+          changes: {
+            status: 'pending',
+            completedAt: null,
+          },
+        });
       })
       .addCase(taskActions.fetchAgents.fulfilled, (state, action) => {
         state.agents = action.payload;

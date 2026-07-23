@@ -73,7 +73,8 @@ const ChatScreenWrapper = (props: ChatScreenProps) => {
   const { conversationId } = useChatWindowContext();
   const conversation = useAppSelector(state => selectConversationById(state, conversationId));
 
-  const { meta: { sender: { name = '', thumbnail = '' } = {} } = {} } = conversation || {};
+  const { meta: { sender: { id: contactId, name = '', thumbnail = '' } = {} } = {} } =
+    conversation || {};
   const { inboxId } = conversation || {};
 
   useEffect(() => {
@@ -90,7 +91,14 @@ const ChatScreenWrapper = (props: ChatScreenProps) => {
       <ConversationPagerView {...props} />
       <View pointerEvents="box-none" style={tailwind.style('absolute right-0 top-[148px] z-20')}>
         <Pressable
-          onPress={() => navigation.navigate('Tab', { screen: 'PointOfSale' })}
+          onPress={() =>
+            navigation.navigate('PointOfSaleScreen', {
+              conversationId,
+              contactId,
+              contactName: name || 'Consumidor final',
+              contactThumbnail: thumbnail || undefined,
+            })
+          }
           hitSlop={10}
           style={tailwind.style(
             'h-10 w-10 items-center justify-center rounded-l-[8px] bg-blue-800',

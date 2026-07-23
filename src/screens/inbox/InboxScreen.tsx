@@ -31,6 +31,12 @@ const sameDay = (first: Date, second: Date) =>
   first.getMonth() === second.getMonth() &&
   first.getDate() === second.getDate();
 
+const addDays = (date: Date, days: number) => {
+  const nextDate = new Date(date);
+  nextDate.setDate(date.getDate() + days);
+  return nextDate;
+};
+
 const InboxScreen = () => {
   const dispatch = useAppDispatch();
   const navigation = useNavigation();
@@ -52,12 +58,16 @@ const InboxScreen = () => {
   const selectedAgent = visibleAgents.find(agent => agent.id === selectedAgentId);
 
   const fetchTasks = useCallback(() => {
-    return dispatch(
-      taskActions.fetchTasks({
-        date: selectedDate,
-        assigneeId: selectedAgentId,
-        taskType: schedulingEnabled ? 'appointment' : 'task',
-      }),
+    return Promise.all(
+      [-1, 0, 1].map(dayOffset =>
+        dispatch(
+          taskActions.fetchTasks({
+            date: addDays(selectedDate, dayOffset),
+            assigneeId: selectedAgentId,
+            taskType: schedulingEnabled ? 'appointment' : 'task',
+          }),
+        ),
+      ),
     );
   }, [dispatch, schedulingEnabled, selectedAgentId, selectedDate]);
 
@@ -76,7 +86,15 @@ const InboxScreen = () => {
   }, [selectedAgentId, visibleAgents]);
 
   const tasksForSelectedDate = useMemo(
-    () => tasks.filter(task => sameDay(new Date(task.dueAt), selectedDate)),
+    () =>
+      tasks
+        .filter(task => sameDay(new Date(task.dueAt), selectedDate))
+        .sort((first, second) => {
+          if (first.status !== second.status) {
+            return first.status === 'completed' ? 1 : -1;
+          }
+          return new Date(first.dueAt).getTime() - new Date(second.dueAt).getTime();
+        }),
     [selectedDate, tasks],
   );
 
@@ -86,7 +104,11 @@ const InboxScreen = () => {
     setIsRefreshing(false);
   };
 
-  const handleComplete = async (taskId: number) => {
+  const handleToggleComplete = async (taskId: number, status: 'pending' | 'completed') => {
+    if (status === 'completed') {
+      await dispatch(taskActions.reopenTask(taskId)).unwrap();
+      return;
+    }
     await dispatch(taskActions.completeTask(taskId)).unwrap();
   };
 
@@ -98,14 +120,8 @@ const InboxScreen = () => {
     showToast({ message: 'Tarefas concluídas' });
   };
 
-  const openConversation = (conversationId?: number) => {
-    if (!conversationId) return;
-    navigation.dispatch(
-      StackActions.push('ChatScreen', {
-        conversationId,
-        isConversationOpenedExternally: false,
-      }),
-    );
+  const openTaskDetails = (taskId: number) => {
+    navigation.dispatch(StackActions.push('TaskDetailsScreen', { taskId }));
   };
 
   const renderEmpty = () => {
@@ -141,12 +157,17 @@ const InboxScreen = () => {
         renderItem={({ item }) => (
           <TaskItem
             task={item}
-            onComplete={() => handleComplete(item.id)}
-            onPress={() => openConversation(item.conversation?.id)}
+            onComplete={() => handleToggleComplete(item.id, item.status)}
+            onPress={() => openTaskDetails(item.id)}
           />
         )}
         ListHeaderComponent={
-          <WeeklyPlanner selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+          <WeeklyPlanner
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            onTaskPress={task => openTaskDetails(task.id)}
+            tasks={tasks}
+          />
         }
         ListEmptyComponent={renderEmpty}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}

@@ -10,8 +10,9 @@ import { useAppDispatch, useAppSelector } from '@/hooks';
 import {
   selectSchedulingAgentIds,
   selectSchedulingBusinessDays,
+  selectSchedulingEndHour,
   selectSchedulingEnabled,
-  selectSchedulingHours,
+  selectSchedulingStartHour,
 } from '@/store/app-features/appFeaturesSelectors';
 import {
   setSchedulingAgentIds,
@@ -93,7 +94,8 @@ const SchedulingSettingsScreen = () => {
   const enabled = useAppSelector(selectSchedulingEnabled);
   const agentIds = useAppSelector(selectSchedulingAgentIds);
   const businessDays = useAppSelector(selectSchedulingBusinessDays);
-  const { startHour, endHour } = useAppSelector(selectSchedulingHours);
+  const startHour = useAppSelector(selectSchedulingStartHour);
+  const endHour = useAppSelector(selectSchedulingEndHour);
   const agents = useAppSelector(selectTaskAgents);
 
   useEffect(() => {

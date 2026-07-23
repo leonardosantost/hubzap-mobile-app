@@ -30,7 +30,7 @@ export const ConversationAvatar = memo((props: ConversationAvatarProps) => {
 
   return (
     <AnimatedNativeView
-      style={tailwind.style('relative overflow-visible')}
+      style={tailwind.style('relative h-[50px] w-[50px] self-start overflow-visible')}
       layout={LinearTransition.springify().damping(28).stiffness(200)}>
       <Avatar size="4xl" {...{ src, name, status: status as AvatarStatusType }} />
       {inbox ? (

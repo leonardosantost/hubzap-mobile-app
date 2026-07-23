@@ -26,14 +26,14 @@ export const TeamChatPinnedItem = ({
     : 'Nenhuma mensagem ainda';
 
   return (
-    <Pressable onPress={onPress} style={tailwind.style('px-3 bg-[#FFF8DD]')}>
-      <Animated.View style={tailwind.style('flex-row items-start justify-between gap-3')}>
+    <Pressable onPress={onPress} style={tailwind.style('px-3 bg-[#FFFBEB]')}>
+      <Animated.View style={tailwind.style('flex-row justify-between gap-3')}>
         <Animated.View style={tailwind.style('py-3 flex-row')}>
           <Animated.View
             style={tailwind.style(
-              'h-10 w-10 items-center justify-center rounded-full bg-[#F6D86B]',
+              'relative h-[50px] w-[50px] items-center justify-center rounded-full bg-[#FEF3C7]',
             )}>
-            <Icon icon={<ChatIcon stroke="#6B5410" />} size={20} />
+            <Icon icon={<ChatIcon stroke="#8A6A00" />} size={24} />
           </Animated.View>
         </Animated.View>
         <Animated.View

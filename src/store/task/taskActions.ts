@@ -15,5 +15,9 @@ export const taskActions = {
     await TaskService.completeTask(taskId);
     return taskId;
   }),
+  reopenTask: createAsyncThunk<number, number>('tasks/reopenTask', async taskId => {
+    await TaskService.reopenTask(taskId);
+    return taskId;
+  }),
   fetchAgents: createAsyncThunk<Agent[]>('tasks/fetchAgents', TaskService.getAgents),
 };

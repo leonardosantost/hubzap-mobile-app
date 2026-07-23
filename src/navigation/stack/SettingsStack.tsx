@@ -11,6 +11,12 @@ import AutomationNewScreen from '@/screens/settings/AutomationNewScreen';
 import AutomationEditorScreen from '@/screens/settings/AutomationEditorScreen';
 import CatalogItemsScreen from '@/screens/settings/CatalogItemsScreen';
 import SchedulingSettingsScreen from '@/screens/settings/SchedulingSettingsScreen';
+import {
+  CannedResponsesSettingsScreen,
+  CustomAttributesSettingsScreen,
+  ProfileSettingsScreen,
+  UsersAndTeamsSettingsScreen,
+} from '@/screens/settings/AdminSettingsScreens';
 
 export type SettingsStackParamList = {
   SettingsScreen: undefined;
@@ -23,6 +29,10 @@ export type SettingsStackParamList = {
   AutomationEditorScreen: { templateKey?: string; automationId?: number } | undefined;
   CatalogItemsScreen: undefined;
   SchedulingSettingsScreen: undefined;
+  ProfileSettingsScreen: undefined;
+  UsersAndTeamsSettingsScreen: undefined;
+  CannedResponsesSettingsScreen: undefined;
+  CustomAttributesSettingsScreen: undefined;
 };
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -79,6 +89,26 @@ export const SettingsStack = () => {
         options={{ headerShown: false, animation: 'slide_from_right' }}
         name="SchedulingSettingsScreen"
         component={SchedulingSettingsScreen}
+      />
+      <Stack.Screen
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+        name="ProfileSettingsScreen"
+        component={ProfileSettingsScreen}
+      />
+      <Stack.Screen
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+        name="UsersAndTeamsSettingsScreen"
+        component={UsersAndTeamsSettingsScreen}
+      />
+      <Stack.Screen
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+        name="CannedResponsesSettingsScreen"
+        component={CannedResponsesSettingsScreen}
+      />
+      <Stack.Screen
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+        name="CustomAttributesSettingsScreen"
+        component={CustomAttributesSettingsScreen}
       />
     </Stack.Navigator>
   );

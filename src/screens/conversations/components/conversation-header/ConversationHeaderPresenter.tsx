@@ -26,6 +26,7 @@ type ConversationHeaderPresenterProps = {
   onViewModeChange?: (mode: ConversationViewMode) => void;
   onLeftIconPress: () => void;
   onRightIconPress: () => void;
+  onCreatePress?: () => void;
   onClearFilter: () => void;
   title?: string;
   onBack?: () => void;
@@ -35,7 +36,9 @@ type ConversationHeaderPresenterProps = {
 type LeftSectionProps = {
   currentState: HeaderState;
   isSelectedAll: boolean;
+  filtersAppliedCount: number;
   onLeftIconPress: () => void;
+  onRightIconPress: () => void;
   onBack?: () => void;
 };
 
@@ -48,8 +51,8 @@ type FilterSectionProps = {
 
 type RightSectionProps = {
   currentState: HeaderState;
-  filtersAppliedCount: number;
   onRightIconPress: () => void;
+  onCreatePress?: () => void;
 };
 
 const HeaderTitle = ({ title }: { title?: string }) => (
@@ -99,12 +102,26 @@ const HeaderViewModeSwitch = ({
 const LeftSection = ({
   currentState,
   isSelectedAll,
+  filtersAppliedCount,
   onLeftIconPress,
+  onRightIconPress,
   onBack,
 }: LeftSectionProps) => {
   const { entering, exiting } = useHeaderAnimation();
 
-  if (currentState === 'Filter' || currentState === 'Search') return null;
+  if (currentState === 'Search') return null;
+  if (currentState === 'Filter') {
+    return (
+      <Animated.View style={tailwind.style('flex-1 items-start')}>
+        <Pressable onPress={onRightIconPress} hitSlop={16}>
+          <Animated.View exiting={exiting} entering={entering}>
+            <Icon size={24} icon={<CloseIcon />} />
+          </Animated.View>
+        </Pressable>
+      </Animated.View>
+    );
+  }
+
   if (currentState !== 'Select') {
     if (onBack) {
       return (
@@ -115,7 +132,22 @@ const LeftSection = ({
         </Animated.View>
       );
     }
-    return <Animated.View style={tailwind.style('flex-1')} />;
+    return (
+      <Animated.View style={tailwind.style('flex-1 items-start')}>
+        <Pressable onPress={onLeftIconPress} hitSlop={16}>
+          <Animated.View exiting={exiting} entering={entering}>
+            {filtersAppliedCount > 0 && (
+              <Animated.View
+                style={tailwind.style(
+                  'absolute z-10 -right-0.5 h-2.5 w-2.5 rounded-full bg-blue-800',
+                )}
+              />
+            )}
+            <Icon size={24} icon={<FilterIcon />} />
+          </Animated.View>
+        </Pressable>
+      </Animated.View>
+    );
   }
 
   return (
@@ -165,35 +197,20 @@ const FilterSection = ({
   );
 };
 
-const RightSection = ({
-  currentState,
-  filtersAppliedCount,
-  onRightIconPress,
-}: RightSectionProps) => {
+const RightSection = ({ currentState, onRightIconPress, onCreatePress }: RightSectionProps) => {
   const { entering, exiting } = useHeaderAnimation();
 
   return (
     <Animated.View style={tailwind.style('flex-1 flex-row items-center justify-end gap-3')}>
-      <Pressable onPress={onRightIconPress} hitSlop={16}>
-        {currentState === 'Filter' || currentState === 'Select' ? (
+      {currentState === 'Select' ? (
+        <Pressable onPress={onRightIconPress} hitSlop={16}>
           <Animated.View exiting={exiting} entering={entering}>
             <Icon size={24} icon={<CloseIcon />} />
           </Animated.View>
-        ) : (
-          <Animated.View exiting={exiting} entering={entering}>
-            {filtersAppliedCount > 0 && (
-              <Animated.View
-                style={tailwind.style(
-                  'absolute z-10 -right-0.5 h-2.5 w-2.5 rounded-full bg-blue-800',
-                )}
-              />
-            )}
-            <Icon size={24} icon={<FilterIcon />} />
-          </Animated.View>
-        )}
-      </Pressable>
-      {currentState === 'none' ? (
-        <Pressable onPress={() => {}} hitSlop={8}>
+        </Pressable>
+      ) : null}
+      {currentState === 'none' && onCreatePress ? (
+        <Pressable onPress={onCreatePress} hitSlop={8}>
           <Animated.View
             exiting={exiting}
             entering={entering}
@@ -214,6 +231,7 @@ export const ConversationHeaderPresenter = ({
   onViewModeChange,
   onLeftIconPress,
   onRightIconPress,
+  onCreatePress,
   onClearFilter,
   title,
   onBack,
@@ -228,7 +246,9 @@ export const ConversationHeaderPresenter = ({
         <LeftSection
           currentState={currentState}
           isSelectedAll={isSelectedAll}
+          filtersAppliedCount={filtersAppliedCount}
           onLeftIconPress={onLeftIconPress}
+          onRightIconPress={onRightIconPress}
           onBack={onBack}
         />
         {currentState === 'Filter' && (
@@ -249,8 +269,8 @@ export const ConversationHeaderPresenter = ({
         )}
         <RightSection
           currentState={currentState}
-          filtersAppliedCount={filtersAppliedCount}
           onRightIconPress={onRightIconPress}
+          onCreatePress={onCreatePress}
         />
       </Animated.View>
     </React.Fragment>

@@ -17,6 +17,7 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   BottomSheetModal,
+  BottomSheetScrollView,
   useBottomSheetSpringConfigs,
   useBottomSheetModal,
 } from '@gorhom/bottom-sheet';
@@ -33,9 +34,17 @@ import {
   AssigneeTypeFilters,
 } from './components';
 
-import { ActionTabs, BottomSheetBackdrop, BottomSheetWrapper, SearchBar } from '@/components-next';
+import {
+  ActionTabs,
+  Avatar,
+  BottomSheetBackdrop,
+  BottomSheetHeader,
+  BottomSheetWrapper,
+  Icon,
+  SearchBar,
+} from '@/components-next';
 
-import { EmptyStateIcon } from '@/svg-icons';
+import { EmptyStateIcon, MailIcon, UserIcon } from '@/svg-icons';
 import {
   SCREENS,
   TAB_BAR_HEIGHT,
@@ -89,6 +98,98 @@ type FlashListRenderItemType = {
   item: Conversation;
   index: number;
 };
+
+const QuickCreateAction = ({
+  title,
+  description,
+  icon,
+  onPress,
+}: {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  onPress: () => void;
+}) => (
+  <Pressable
+    onPress={onPress}
+    style={tailwind.style(
+      'flex-1 min-h-[88px] rounded-xl border-[1px] border-blackA-A3 bg-white p-3 justify-between',
+    )}>
+    <Animated.View
+      style={tailwind.style('h-9 w-9 rounded-full bg-blue-50 items-center justify-center')}>
+      <Icon icon={icon} size={20} />
+    </Animated.View>
+    <Animated.View>
+      <Text style={tailwind.style('text-sm font-inter-medium-24 text-gray-950')}>{title}</Text>
+      <Text numberOfLines={1} style={tailwind.style('mt-0.5 text-xs text-gray-600')}>
+        {description}
+      </Text>
+    </Animated.View>
+  </Pressable>
+);
+
+const ConversationCreateSheet = ({
+  recentConversations,
+}: {
+  recentConversations: Conversation[];
+}) => (
+  <BottomSheetWrapper>
+    <BottomSheetHeader headerText="Iniciar conversa" />
+    <BottomSheetScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={tailwind.style('px-4 pt-5 pb-8')}>
+      <Animated.View style={tailwind.style('flex-row gap-3')}>
+        <QuickCreateAction
+          title="Nova campanha"
+          description="Enviar para vários contatos"
+          icon={<MailIcon stroke={tailwind.color('text-blue-800')} />}
+          onPress={() => {}}
+        />
+        <QuickCreateAction
+          title="Novo contato"
+          description="Cadastrar e conversar"
+          icon={<UserIcon stroke={tailwind.color('text-blue-800')} />}
+          onPress={() => {}}
+        />
+      </Animated.View>
+
+      <Text style={tailwind.style('mt-6 mb-2 text-sm font-inter-medium-24 text-gray-700')}>
+        Contatos recentes
+      </Text>
+      {recentConversations.slice(0, 6).map(conversation => {
+        const sender = conversation.meta?.sender;
+        const name = sender?.name || 'Contato';
+        const phone = sender?.phoneNumber || sender?.email || 'Sem identificação';
+
+        return (
+          <Pressable
+            key={conversation.id}
+            onPress={() => {}}
+            style={tailwind.style('flex-row items-center py-3 border-b-[1px] border-blackA-A3')}>
+            <Avatar
+              size="2xl"
+              name={name}
+              src={sender?.thumbnail ? { uri: sender.thumbnail } : undefined}
+            />
+            <Animated.View style={tailwind.style('ml-3 flex-1')}>
+              <Text numberOfLines={1} style={tailwind.style('text-base text-gray-950')}>
+                {name}
+              </Text>
+              <Text numberOfLines={1} style={tailwind.style('mt-0.5 text-sm text-gray-600')}>
+                {phone}
+              </Text>
+            </Animated.View>
+          </Pressable>
+        );
+      })}
+      {recentConversations.length === 0 ? (
+        <Text style={tailwind.style('py-6 text-center text-sm text-gray-600')}>
+          Nenhum contato recente
+        </Text>
+      ) : null}
+    </BottomSheetScrollView>
+  </BottomSheetWrapper>
+);
 
 const shouldRefetchForFilterChange = (previousFilters: FilterState, updatedFilters: FilterState) =>
   previousFilters.assignee_type !== updatedFilters.assignee_type ||
@@ -506,6 +607,7 @@ const ConversationScreen = ({
   const currentBottomSheet = useAppSelector(selectBottomSheetState);
   const dispatch = useAppDispatch();
   const [viewMode, setViewMode] = useState<ConversationViewMode>('list');
+  const createConversationSheetRef = useRef<BottomSheetModal>(null);
 
   const animationConfigs = useBottomSheetSpringConfigs({
     mass: 1.2,
@@ -514,6 +616,15 @@ const ConversationScreen = ({
   });
 
   const { filtersModalSheetRef } = useRefsContext();
+  const filters = useAppSelector(selectFilters);
+  const userId = useAppSelector(selectUserId);
+  const recentConversations = useAppSelector(state =>
+    getFilteredConversations(state, filters, userId),
+  );
+
+  const handleCreatePress = () => {
+    createConversationSheetRef.current?.present();
+  };
 
   const handleOnDismiss = () => {
     /**
@@ -552,6 +663,7 @@ const ConversationScreen = ({
           onViewModeChange={setViewMode}
           title={title}
           onBack={onBack}
+          onCreatePress={!title ? handleCreatePress : undefined}
           showViewModeTabs={showViewModeTabs}
         />
         {!showViewModeTabs || viewMode === 'list' ? (
@@ -577,6 +689,19 @@ const ConversationScreen = ({
             {currentBottomSheet === 'assignee_type' ? <AssigneeTypeFilters /> : null}
             {currentBottomSheet === 'inbox_id' ? <InboxFilters /> : null}
           </BottomSheetWrapper>
+        </BottomSheetModal>
+        <BottomSheetModal
+          ref={createConversationSheetRef}
+          backdropComponent={BottomSheetBackdrop}
+          handleIndicatorStyle={tailwind.style(
+            'overflow-hidden bg-blackA-A6 w-8 h-1 rounded-[11px]',
+          )}
+          handleStyle={tailwind.style('p-0 h-4 pt-[5px]')}
+          style={tailwind.style('rounded-[26px] overflow-hidden')}
+          animationConfigs={animationConfigs}
+          enablePanDownToClose
+          snapPoints={['56%']}>
+          <ConversationCreateSheet recentConversations={recentConversations} />
         </BottomSheetModal>
         {viewMode === 'list' ? (
           <>

@@ -237,8 +237,8 @@ const SettingsScreen = () => {
     {
       title: 'Perfil',
       icon: <UserIcon />,
-      badgeText: 'Em breve',
-      badgeType: 'default',
+      hasChevron: true,
+      onPressListItem: () => navigation.dispatch(StackActions.push('ProfileSettingsScreen')),
     },
     {
       title: 'Integrações',
@@ -249,8 +249,6 @@ const SettingsScreen = () => {
     {
       title: 'Aplicativos',
       icon: <GridIcon />,
-      badgeText: 'Em breve',
-      badgeType: 'default',
       hasChevron: true,
       onPressListItem: () => navigation.dispatch(StackActions.push('ApplicationsScreen')),
     },
@@ -261,10 +259,10 @@ const SettingsScreen = () => {
       onPressListItem: () => navigation.dispatch(StackActions.push('AutomationsScreen')),
     },
     {
-      title: 'Usuários',
+      title: 'Usuários e Times',
       icon: <AddParticipant />,
-      badgeText: 'Em breve',
-      badgeType: 'default',
+      hasChevron: true,
+      onPressListItem: () => navigation.dispatch(StackActions.push('UsersAndTeamsSettingsScreen')),
     },
     {
       title: 'Meu Plano',
@@ -275,14 +273,16 @@ const SettingsScreen = () => {
     {
       title: 'Respostas Rápidas',
       icon: <CannedResponseIcon />,
-      badgeText: 'Em breve',
-      badgeType: 'default',
+      hasChevron: true,
+      onPressListItem: () =>
+        navigation.dispatch(StackActions.push('CannedResponsesSettingsScreen')),
     },
     {
       title: 'Atributos',
       icon: <LabelTag stroke={tailwind.color('text-gray-800') as string} />,
-      badgeText: 'Em breve',
-      badgeType: 'default',
+      hasChevron: true,
+      onPressListItem: () =>
+        navigation.dispatch(StackActions.push('CustomAttributesSettingsScreen')),
     },
   ];
 
