@@ -16,6 +16,8 @@ import { selectNotificationsMetadata } from '@/store/notification/notificationSe
 import {
   ConversationIconFilled,
   ConversationIconOutline,
+  PosIconFilled,
+  PosIconOutline,
   SettingsIconFilled,
   SettingsIconOutline,
   TasksIconFilled,
@@ -43,6 +45,8 @@ const TabBarIcons = ({ focused, route }: TabBarIconsProps) => {
       return focused ? <ConversationIconFilled /> : <ConversationIconOutline />;
     case 'Inbox':
       return focused ? <TasksIconFilled /> : <TasksIconOutline />;
+    case 'PointOfSale':
+      return focused ? <PosIconFilled /> : <PosIconOutline />;
     case 'Settings':
       return focused ? <SettingsIconFilled /> : <SettingsIconOutline />;
   }
@@ -84,6 +88,8 @@ const getTabLabel = (routeName: keyof TabParamList) => {
       return 'Tarefas';
     case 'Conversations':
       return 'Conversas';
+    case 'PointOfSale':
+      return 'PDV';
     case 'Settings':
       return 'Ajustes';
     default:

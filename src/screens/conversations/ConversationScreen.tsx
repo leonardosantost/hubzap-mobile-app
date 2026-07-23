@@ -176,9 +176,6 @@ const ConversationSearchHeader = ({
   showTeamChatShortcut: boolean;
 }) => (
   <>
-    {showTeamChatShortcut && teamChat?.enabled && teamChat.inboxId ? (
-      <TeamChatPinnedItem onPress={onTeamChatPress} />
-    ) : null}
     <Pressable onPress={onSearchPress} style={tailwind.style('pt-3 pb-1')}>
       <SearchBar
         editable={false}
@@ -192,6 +189,15 @@ const ConversationSearchHeader = ({
       selectedLabel={selectedLabel}
       onLabelPress={onLabelPress}
     />
+    {showTeamChatShortcut && teamChat?.enabled && teamChat.inboxId ? (
+      <TeamChatPinnedItem
+        onPress={onTeamChatPress}
+        teamName={teamChat.latestConversation?.teamName}
+        message={teamChat.latestConversation?.message?.content}
+        senderName={teamChat.latestConversation?.message?.senderName}
+        updatedAt={teamChat.latestConversation?.updatedAt}
+      />
+    ) : null}
   </>
 );
 
@@ -289,7 +295,12 @@ const ConversationList = ({ showTeamChatShortcut = true }: { showTeamChatShortcu
   const handleRefresh = useCallback(() => {
     setFlashListReady(false);
     setIsRefreshing(true);
-    clearAndFetchConversations(filters).finally(() => {
+    Promise.all([
+      clearAndFetchConversations(filters),
+      TeamChatService.getStatus()
+        .then(setTeamChat)
+        .catch(() => setTeamChat(null)),
+    ]).finally(() => {
       setIsRefreshing(false);
     });
   }, [clearAndFetchConversations, filters]);

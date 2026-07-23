@@ -26,6 +26,7 @@ type ConversationHeaderPresenterProps = {
   onViewModeChange?: (mode: ConversationViewMode) => void;
   onLeftIconPress: () => void;
   onRightIconPress: () => void;
+  onCreatePress: () => void;
   onClearFilter: () => void;
   title?: string;
   onBack?: () => void;
@@ -50,6 +51,7 @@ type RightSectionProps = {
   currentState: HeaderState;
   filtersAppliedCount: number;
   onRightIconPress: () => void;
+  onCreatePress: () => void;
 };
 
 const HeaderTitle = ({ title }: { title?: string }) => (
@@ -63,39 +65,36 @@ const HeaderTitle = ({ title }: { title?: string }) => (
   </Animated.View>
 );
 
-const ViewModeTabs = ({
+const HeaderViewModeSwitch = ({
   viewMode,
   onViewModeChange,
 }: {
   viewMode: ConversationViewMode;
   onViewModeChange: (mode: ConversationViewMode) => void;
 }) => (
-  <Animated.View style={tailwind.style('px-4 pb-2')}>
-    <Animated.View style={tailwind.style('h-9 flex-row rounded-[11px] bg-blackA-A3 p-1')}>
-      {[
-        ['list', 'Lista'],
-        ['board', 'Quadro'],
-      ].map(([mode, label]) => {
-        const isActive = viewMode === mode;
-        return (
-          <Pressable
-            key={mode}
-            onPress={() => onViewModeChange(mode as ConversationViewMode)}
+  <Animated.View style={tailwind.style('flex-1 flex-row items-center justify-center gap-4')}>
+    {[
+      ['list', 'Conversas'],
+      ['board', 'Quadro'],
+    ].map(([mode, label]) => {
+      const isActive = viewMode === mode;
+      return (
+        <Pressable
+          key={mode}
+          onPress={() => onViewModeChange(mode as ConversationViewMode)}
+          hitSlop={10}>
+          <Text
             style={tailwind.style(
-              'flex-1 items-center justify-center rounded-[8px]',
-              isActive ? 'bg-white' : '',
+              'text-[17px] leading-[17px] tracking-[0.32px]',
+              isActive
+                ? 'font-inter-semibold-24 text-gray-950'
+                : 'font-inter-normal-20 text-gray-700',
             )}>
-            <Text
-              style={tailwind.style(
-                'text-sm font-inter-medium-24 leading-[17px]',
-                isActive ? 'text-gray-950' : 'text-gray-800',
-              )}>
-              {label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </Animated.View>
+            {label}
+          </Text>
+        </Pressable>
+      );
+    })}
   </Animated.View>
 );
 
@@ -172,6 +171,7 @@ const RightSection = ({
   currentState,
   filtersAppliedCount,
   onRightIconPress,
+  onCreatePress,
 }: RightSectionProps) => {
   const { entering, exiting } = useHeaderAnimation();
 
@@ -196,7 +196,7 @@ const RightSection = ({
         )}
       </Pressable>
       {currentState === 'none' ? (
-        <Pressable onPress={() => {}} hitSlop={8}>
+        <Pressable onPress={onCreatePress} hitSlop={8}>
           <Animated.View
             exiting={exiting}
             entering={entering}
@@ -217,6 +217,7 @@ export const ConversationHeaderPresenter = ({
   onViewModeChange,
   onLeftIconPress,
   onRightIconPress,
+  onCreatePress,
   onClearFilter,
   title,
   onBack,
@@ -242,19 +243,21 @@ export const ConversationHeaderPresenter = ({
             animatedStyle={animatedStyle}
           />
         )}
-        <HeaderTitle title={title} />
+        {showViewModeTabs && currentState === 'none' ? (
+          <HeaderViewModeSwitch
+            viewMode={viewMode || 'list'}
+            onViewModeChange={onViewModeChange || (() => {})}
+          />
+        ) : (
+          <HeaderTitle title={title} />
+        )}
         <RightSection
           currentState={currentState}
           filtersAppliedCount={filtersAppliedCount}
           onRightIconPress={onRightIconPress}
+          onCreatePress={onCreatePress}
         />
       </Animated.View>
-      {showViewModeTabs && currentState === 'none' ? (
-        <ViewModeTabs
-          viewMode={viewMode || 'list'}
-          onViewModeChange={onViewModeChange || (() => {})}
-        />
-      ) : null}
     </React.Fragment>
   );
 };

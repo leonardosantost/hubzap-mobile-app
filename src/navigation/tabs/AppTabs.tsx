@@ -26,6 +26,8 @@ import ContactDetailsScreen from '@/screens/contact-details/ContactDetailsScreen
 import DashboardScreen from '@/screens/dashboard/DashboardScreen';
 import SearchScreen from '@/screens/search/SearchScreen';
 import { TeamChatScreen } from '@/screens/conversations/TeamChatScreen';
+import { PointOfSaleScreen } from '@/screens/point-of-sale/PointOfSaleScreen';
+import { NewConversationScreen } from '@/screens/conversations/NewConversationScreen';
 
 import { selectInstallationUrl } from '@/store/settings/settingsSelectors';
 import { BottomTabBar } from './BottomTabBar';
@@ -47,6 +49,7 @@ const Tab = createBottomTabNavigator();
 export type TabParamList = {
   Conversations: undefined;
   Inbox: undefined;
+  PointOfSale: undefined;
   Settings: undefined;
   Login: undefined;
   ConfigInstallationURL: undefined;
@@ -68,6 +71,7 @@ export type TabBarExcludedScreenParamList = {
   Dashboard: { url: string };
   Login: undefined;
   SearchScreen: undefined;
+  NewConversationScreen: undefined;
   ImageScreen: undefined;
   ConversationDetails: undefined;
   ConversationAction: undefined;
@@ -173,6 +177,11 @@ const Tabs = () => {
           component={ConversationStack}
         />
       )}
+      <Tab.Screen
+        name="PointOfSale"
+        options={{ headerShown: false }}
+        component={PointOfSaleScreen}
+      />
       <Tab.Screen name="Settings" options={{ headerShown: false }} component={SettingsStack} />
     </Tab.Navigator>
   );
@@ -210,6 +219,11 @@ export const AppTabs = () => {
           options={{ headerShown: false, animation: 'slide_from_right' }}
           name="SearchScreen"
           component={SearchScreen}
+        />
+        <Stack.Screen
+          options={{ headerShown: false, animation: 'slide_from_bottom' }}
+          name="NewConversationScreen"
+          component={NewConversationScreen}
         />
         <Stack.Screen
           options={{ headerShown: false, animation: 'slide_from_right' }}
