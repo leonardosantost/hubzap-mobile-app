@@ -3,3 +3,7 @@ export * from './ConversationSettingsPanel';
 export * from './ConversationLabelActions';
 export * from './AddParticipantList';
 export * from './UpdateParticipant';
+export * from './ConversationContactHeader';
+export * from './ConversationLabelButtons';
+export * from './ContactNotesPanel';
+export * from './EditableContactAttributes';

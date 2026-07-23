@@ -9,9 +9,13 @@ import i18n from '@/i18n';
 
 const Chatwoot = () => {
   useEffect(() => {
-    BackHandler.addEventListener('hardwareBackPress', handleBackButtonClick);
+    const backHandlerSubscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackButtonClick,
+    );
+
     return () => {
-      BackHandler.removeEventListener('hardwareBackPress', handleBackButtonClick);
+      backHandlerSubscription.remove();
     };
   }, []);
   const handleBackButtonClick = () => {

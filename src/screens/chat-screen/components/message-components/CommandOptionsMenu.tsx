@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch } from '@/hooks';
 import { updateAttachments } from '@/store/conversation/sendMessageSlice';
 import { useRefsContext } from '@/context';
-import { AttachFileIcon, CameraIcon, MacrosIcon, PhotosIcon } from '@/svg-icons';
+import { AttachFileIcon, MacrosIcon, PhotosIcon } from '@/svg-icons';
 import { tailwind } from '@/theme';
 import { useHaptic, useScaleAnimation } from '@/utils';
 import { Icon } from '@/components-next/common';
@@ -22,8 +22,9 @@ import { MAXIMUM_FILE_UPLOAD_SIZE } from '@/constants';
 import i18n from '@/i18n';
 import { showToast } from '@/utils/toastUtils';
 import { findFileSize } from '@/utils/fileUtils';
+import type { AppDispatch } from '@/store';
 
-export const handleOpenPhotosLibrary = async dispatch => {
+export const handleOpenPhotosLibrary = async (dispatch: AppDispatch) => {
   const pickedAssets = await launchImageLibrary({
     quality: 1,
     selectionLimit: 4,
@@ -58,7 +59,7 @@ export const handleOpenPhotosLibrary = async dispatch => {
   }
 };
 
-const handleLaunchCamera = async dispatch => {
+export const handleLaunchCamera = async (dispatch: AppDispatch) => {
   request(Platform.OS === 'ios' ? PERMISSIONS.IOS.CAMERA : PERMISSIONS.ANDROID.CAMERA).then(
     async result => {
       if (RESULTS.BLOCKED === result) {
@@ -117,7 +118,7 @@ const mapObject = (originalObject: DocumentPickerResponse): Asset[] => {
   ];
 };
 
-const handleAttachFile = async dispatch => {
+const handleAttachFile = async (dispatch: AppDispatch) => {
   try {
     const result = await pick({
       type: [
@@ -157,12 +158,6 @@ const ADD_MENU_OPTIONS = [
     handlePress: handleOpenPhotosLibrary,
   },
   {
-    id: 'camera',
-    icon: <CameraIcon />,
-    titleKey: 'CONVERSATION_ATTACHMENT.OPTIONS.CAMERA',
-    handlePress: handleLaunchCamera,
-  },
-  {
     id: 'attach_file',
     icon: <AttachFileIcon />,
     titleKey: 'CONVERSATION_ATTACHMENT.OPTIONS.ATTACH_FILE',
@@ -176,7 +171,7 @@ const ADD_MENU_OPTIONS = [
   },
 ];
 
-export const validateFileAndSetAttachments = async (dispatch, attachment) => {
+export const validateFileAndSetAttachments = async (dispatch: AppDispatch, attachment: Asset) => {
   const { fileSize } = attachment;
   if (findFileSize(fileSize) <= MAXIMUM_FILE_UPLOAD_SIZE) {
     dispatch(updateAttachments([attachment]));
@@ -229,8 +224,8 @@ export const CommandOptionsMenu = () => {
   const { bottom } = useSafeAreaInsets();
   const isAndroid = Platform.OS === 'android';
   const containerHeight = isAndroid
-    ? 210 + (bottom === 0 ? 16 : bottom)
-    : 175 + (bottom === 0 ? 16 : bottom);
+    ? 165 + (bottom === 0 ? 16 : bottom)
+    : 130 + (bottom === 0 ? 16 : bottom);
   return (
     <Animated.View
       entering={SlideInDown.springify().damping(38).stiffness(240)}

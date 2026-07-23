@@ -37,7 +37,7 @@ describe('conversationFilter reducer', () => {
         filters: {
           ...defaultFilterState,
           status: 'resolved',
-          assignee_type: 'all',
+          assignee_type: 'me',
         },
       };
 

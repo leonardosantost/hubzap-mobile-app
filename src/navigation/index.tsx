@@ -1,6 +1,5 @@
 import React, { useCallback, useRef } from 'react';
 import { ActivityIndicator, Linking, StyleSheet, View } from 'react-native';
-import messaging from '@react-native-firebase/messaging';
 import { getStateFromPath } from '@react-navigation/native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { useFonts } from 'expo-font';
@@ -14,7 +13,7 @@ import { navigationRef } from '@/utils/navigationUtils';
 import { findConversationLinkFromPush, findNotificationFromFCM } from '@/utils/pushUtils';
 import { extractConversationIdFromUrl } from '@/utils/conversationUtils';
 import { useAppSelector } from '@/hooks';
-import { selectInstallationUrl, selectLocale } from '@/store/settings/settingsSelectors';
+import { selectInstallationUrl } from '@/store/settings/settingsSelectors';
 import { SSO_CALLBACK_URL } from '@/constants';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RefsProvider } from '@/context';
@@ -27,8 +26,9 @@ import Inter42020 from '@/assets/fonts/Inter-420-20.ttf';
 import Inter50024 from '@/assets/fonts/Inter-500-24.ttf';
 import Inter58024 from '@/assets/fonts/Inter-580-24.ttf';
 import Inter60020 from '@/assets/fonts/Inter-600-20.ttf';
+import { getFirebaseMessaging } from '@/utils/firebaseUtils';
 
-messaging().setBackgroundMessageHandler(async remoteMessage => {
+getFirebaseMessaging()?.setBackgroundMessageHandler(async remoteMessage => {
   console.log('Message handled in the background!', remoteMessage);
 });
 
@@ -45,7 +45,6 @@ export const AppNavigationContainer = () => {
   const dispatch = useAppDispatch();
 
   const installationUrl = useAppSelector(selectInstallationUrl);
-  const locale = useAppSelector(selectLocale);
 
   const linking = {
     prefixes: [installationUrl, SSO_CALLBACK_URL],
@@ -61,9 +60,8 @@ export const AppNavigationContainer = () => {
         },
       },
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     // getStateFromPath: App running, receives deep link - handles SSO callbacks and conversation navigation
-    getStateFromPath: (path: string, config: any) => {
+    getStateFromPath: (path: string, config: Parameters<typeof getStateFromPath>[1]) => {
       // Handle SSO callback - App running, receives deep link
       if (path.includes(SSO_CALLBACK_URL) || path.includes('auth/saml')) {
         const ssoParams = SsoUtils.parseCallbackUrl(`chatwootapp://${path}`);
@@ -121,7 +119,7 @@ export const AppNavigationContainer = () => {
       }
 
       // getInitialNotification: When the application is opened from a quit state.
-      const message = await messaging().getInitialNotification();
+      const message = await getFirebaseMessaging()?.getInitialNotification();
       if (message) {
         const notification = findNotificationFromFCM({ message });
         const camelCaseNotification = transformNotification(notification);
@@ -152,7 +150,7 @@ export const AppNavigationContainer = () => {
       const subscription = Linking.addEventListener('url', onReceiveURL);
 
       //onNotificationOpenedApp: When the application is running, but in the background.
-      const unsubscribeNotification = messaging().onNotificationOpenedApp(message => {
+      const unsubscribeNotification = getFirebaseMessaging()?.onNotificationOpenedApp(message => {
         if (message) {
           const notification = findNotificationFromFCM({ message });
           const camelCaseNotification = transformNotification(notification);
@@ -169,12 +167,12 @@ export const AppNavigationContainer = () => {
 
       return () => {
         subscription.remove();
-        unsubscribeNotification();
+        unsubscribeNotification?.();
       };
     },
   };
 
-  i18n.locale = locale;
+  i18n.locale = 'pt_BR';
 
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded) {

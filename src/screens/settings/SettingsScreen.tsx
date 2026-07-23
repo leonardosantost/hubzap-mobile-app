@@ -6,11 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackActions, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import {
-  BottomSheetModal,
-  BottomSheetScrollView,
-  useBottomSheetSpringConfigs,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetModal, useBottomSheetSpringConfigs } from '@gorhom/bottom-sheet';
 import DeviceInfo from 'react-native-device-info';
 import * as WebBrowser from 'expo-web-browser';
 import ChatWootWidget from '@chatwoot/react-native-widget';
@@ -32,7 +28,6 @@ import {
   BottomSheetHeader,
   BottomSheetWrapper,
   Button,
-  LanguageList,
   AvailabilityStatusList,
   NotificationPreferences,
   SwitchAccount,
@@ -40,9 +35,21 @@ import {
 } from '@/components-next';
 import { UserAvatar } from './components/UserAvatar';
 
-import { LANGUAGES, TAB_BAR_HEIGHT } from '@/constants';
+import { SLA_NOTIFICATION_FLAGS, TAB_BAR_HEIGHT } from '@/constants';
 import { useRefsContext } from '@/context';
-import { ChatwootIcon, NotificationIcon, SwitchIcon, TranslateIcon } from '@/svg-icons';
+import {
+  AddParticipant,
+  CannedResponseIcon,
+  ChatwootIcon,
+  GridIcon,
+  LabelTag,
+  LinkIcon,
+  MacrosIcon,
+  NotificationIcon,
+  PriorityIcon,
+  SwitchIcon,
+  UserIcon,
+} from '@/svg-icons';
 import { GenericListType } from '@/types';
 
 import { useHaptic } from '@/utils';
@@ -56,12 +63,11 @@ import {
 import { logout, setAccount } from '@/store/auth/authSlice';
 import { authActions } from '@/store/auth/authActions';
 import {
-  selectLocale,
   selectIsChatwootCloud,
   selectPushToken,
+  selectNotificationSettings,
 } from '@/store/settings/settingsSelectors';
 import { settingsActions } from '@/store/settings/settingsActions';
-import { setLocale } from '@/store/settings/settingsSlice';
 
 import AnalyticsHelper from '@/utils/analyticsUtils';
 import { PROFILE_EVENTS } from '@/constants/analyticsEvents';
@@ -98,8 +104,9 @@ const SettingsScreen = () => {
   }, [dispatch]);
 
   const pushToken = useAppSelector(selectPushToken);
+  const notificationSettings = useAppSelector(selectNotificationSettings);
 
-  const userPermissions = getUserPermissions(user, activeAccountId);
+  const userPermissions = user ? getUserPermissions(user, activeAccountId ?? null) : [];
 
   const hasConversationPermission = CONVERSATION_PERMISSIONS.some(permission =>
     userPermissions.includes(permission),
@@ -134,10 +141,8 @@ const SettingsScreen = () => {
 
   const enableAccountSwitch = accounts.length > 1;
 
-  const activeLocale = useSelector(selectLocale);
   const {
     userAvailabilityStatusSheetRef,
-    languagesModalSheetRef,
     notificationPreferencesSheetRef,
     switchAccountSheetRef,
     debugActionsSheetRef,
@@ -167,10 +172,6 @@ const SettingsScreen = () => {
     dispatch(authActions.updateAvailability(payload));
   };
 
-  const onChangeLanguage = (locale: string) => {
-    dispatch(setLocale(locale));
-  };
-
   const changeAccount = (accountId: number) => {
     dispatch(clearAllContacts());
     dispatch(clearAllConversations());
@@ -188,16 +189,34 @@ const SettingsScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availabilityStatus]);
 
-  useEffect(() => {
-    languagesModalSheetRef.current?.dismiss({
-      overshootClamping: true,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeLocale]);
-
   const openURL = async () => {
     await WebBrowser.openBrowserAsync(HELP_URL);
   };
+
+  useEffect(() => {
+    const allPushFlags = notificationSettings.all_push_flags || [];
+    const hasDefaultablePushFlags = allPushFlags.length > 0;
+    const hasNoSelectedPushFlags = notificationSettings.selected_push_flags.length === 0;
+
+    if (!hasDefaultablePushFlags || !hasNoSelectedPushFlags) {
+      return;
+    }
+
+    const defaultPushFlags = allPushFlags.filter(flag => !SLA_NOTIFICATION_FLAGS.includes(flag));
+
+    if (defaultPushFlags.length === 0) {
+      return;
+    }
+
+    dispatch(
+      settingsActions.updateNotificationSettings({
+        notification_settings: {
+          selected_email_flags: notificationSettings.selected_email_flags,
+          selected_push_flags: defaultPushFlags,
+        },
+      }),
+    );
+  }, [dispatch, notificationSettings]);
 
   // const openSystemSettings = () => {
   //   if (Platform.OS === 'ios') {
@@ -213,6 +232,59 @@ const SettingsScreen = () => {
     await dispatch(settingsActions.removeDevice({ pushToken }));
     dispatch(logout());
   }, [dispatch, pushToken]);
+
+  const comingSoonList: GenericListType[] = [
+    {
+      title: 'Perfil',
+      icon: <UserIcon />,
+      badgeText: 'Em breve',
+      badgeType: 'default',
+    },
+    {
+      title: 'Conexões',
+      icon: <LinkIcon />,
+      badgeText: 'Em breve',
+      badgeType: 'default',
+    },
+    {
+      title: 'Aplicativos',
+      icon: <GridIcon />,
+      badgeText: 'Em breve',
+      badgeType: 'default',
+      hasChevron: true,
+      onPressListItem: () => navigation.dispatch(StackActions.push('ApplicationsScreen')),
+    },
+    {
+      title: 'Automações',
+      icon: <MacrosIcon stroke={tailwind.color('text-gray-800') as string} />,
+      badgeText: 'powered by n8n',
+      badgeType: 'accent',
+    },
+    {
+      title: 'Usuários',
+      icon: <AddParticipant />,
+      badgeText: 'Em breve',
+      badgeType: 'default',
+    },
+    {
+      title: 'Meu Plano',
+      icon: <PriorityIcon />,
+      badgeText: 'Em breve',
+      badgeType: 'default',
+    },
+    {
+      title: 'Respostas Rápidas',
+      icon: <CannedResponseIcon />,
+      badgeText: 'Em breve',
+      badgeType: 'default',
+    },
+    {
+      title: 'Atributos',
+      icon: <LabelTag stroke={tailwind.color('text-gray-800') as string} />,
+      badgeText: 'Em breve',
+      badgeType: 'default',
+    },
+  ];
 
   const preferencesList: GenericListType[] = [
     {
@@ -233,14 +305,7 @@ const SettingsScreen = () => {
       onPressListItem: () => notificationPreferencesSheetRef.current?.present(),
       // onPressListItem: openSystemSettings,
     },
-    {
-      hasChevron: true,
-      title: i18n.t('SETTINGS.CHANGE_LANGUAGE'),
-      icon: <TranslateIcon />,
-      subtitle: LANGUAGES[activeLocale as keyof typeof LANGUAGES],
-      subtitleType: 'light',
-      onPressListItem: () => languagesModalSheetRef.current?.present(),
-    },
+    // Language selector intentionally hidden. The app locale is fixed to Portuguese (Brazil).
     {
       hasChevron: enableAccountSwitch,
       title: i18n.t('SETTINGS.SWITCH_ACCOUNT'),
@@ -306,6 +371,9 @@ const SettingsScreen = () => {
           </Animated.View>
         </Animated.View>
         <Animated.View style={tailwind.style('pt-6')}>
+          <SettingsList list={comingSoonList} />
+        </Animated.View>
+        <Animated.View style={tailwind.style('pt-6')}>
           <SettingsList sectionTitle={i18n.t('SETTINGS.PREFERENCES')} list={preferencesList} />
         </Animated.View>
         <Animated.View style={tailwind.style('pt-6')}>
@@ -346,22 +414,7 @@ const SettingsScreen = () => {
           />
         </BottomSheetWrapper>
       </BottomSheetModal>
-      <BottomSheetModal
-        ref={languagesModalSheetRef}
-        backdropComponent={BottomSheetBackdrop}
-        handleIndicatorStyle={tailwind.style('overflow-hidden bg-blackA-A6 w-8 h-1 rounded-[11px]')}
-        // TODO: Fix this later
-        // bottomInset={bottom === 0 ? 12 : bottom}
-        enablePanDownToClose
-        animationConfigs={animationConfigs}
-        handleStyle={tailwind.style('p-0 h-4 pt-[5px]')}
-        style={tailwind.style('rounded-[26px] overflow-hidden')}
-        snapPoints={['70%']}>
-        <BottomSheetScrollView showsVerticalScrollIndicator={false}>
-          <BottomSheetHeader headerText={i18n.t('SETTINGS.SET_LANGUAGE')} />
-          <LanguageList onChangeLanguage={onChangeLanguage} currentLanguage={activeLocale} />
-        </BottomSheetScrollView>
-      </BottomSheetModal>
+      {/* Language selector intentionally removed. Default locale is always pt_BR. */}
       <BottomSheetModal
         ref={notificationPreferencesSheetRef}
         backdropComponent={BottomSheetBackdrop}

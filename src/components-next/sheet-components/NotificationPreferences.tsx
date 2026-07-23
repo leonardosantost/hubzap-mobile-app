@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Switch, StyleSheet } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useAppDispatch, useAppSelector } from '@/hooks';
@@ -7,7 +7,7 @@ import { tailwind } from '@/theme';
 import i18n from 'i18n';
 import { selectNotificationSettings } from '@/store/settings/settingsSelectors';
 import { settingsActions } from '@/store/settings/settingsActions';
-import { NOTIFICATION_PREFERENCE_TYPES } from '@/constants';
+import { NOTIFICATION_PREFERENCE_TYPES, SLA_NOTIFICATION_FLAGS } from '@/constants';
 
 const addOrRemoveItemFromArray = <T,>(array: T[], key: T): T[] => {
   const index = array.indexOf(key);
@@ -29,7 +29,19 @@ export const NotificationPreferences = () => {
 
   const dispatch = useAppDispatch();
 
-  const [selectedPushFlags, setPushFlags] = useState(selected_push_flags);
+  const defaultSelectedPushFlags = useMemo(() => {
+    if (selected_push_flags.length > 0) {
+      return selected_push_flags;
+    }
+
+    return allPushFlags.filter(flag => !SLA_NOTIFICATION_FLAGS.includes(flag));
+  }, [allPushFlags, selected_push_flags]);
+
+  const [selectedPushFlags, setPushFlags] = useState(defaultSelectedPushFlags);
+
+  useEffect(() => {
+    setPushFlags(defaultSelectedPushFlags);
+  }, [defaultSelectedPushFlags]);
 
   const onPushItemChange = (item: string) => {
     const pushFlags = addOrRemoveItemFromArray([...selectedPushFlags], item);

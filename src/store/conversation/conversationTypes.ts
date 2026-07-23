@@ -39,6 +39,7 @@ export interface ConversationPayload {
   assigneeType: AssigneeTypes;
   sortBy: SortTypes;
   inboxId?: number;
+  labels?: string[];
 }
 
 export interface ToggleConversationStatusPayload {

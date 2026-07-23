@@ -43,7 +43,7 @@ import type { AxiosRequestConfig } from 'axios';
 
 export class ConversationService {
   static async getConversations(payload: ConversationPayload): Promise<ConversationListResponse> {
-    const { status, assigneeType, page, sortBy, inboxId = 0 } = payload;
+    const { status, assigneeType, page, sortBy, inboxId = 0, labels = [] } = payload;
 
     const params = {
       inbox_id: inboxId || null,
@@ -51,6 +51,7 @@ export class ConversationService {
       status: status,
       page: page,
       sort_by: sortBy,
+      labels: labels.length > 0 ? labels : null,
     };
     const response = await apiService.get<ConversationListAPIResponse>('conversations', {
       params,

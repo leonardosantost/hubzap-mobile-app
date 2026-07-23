@@ -53,13 +53,29 @@ const ListItem = (props: ListItemProps) => {
             </Animated.Text>
           </Animated.View>
           <Animated.View style={tailwind.style('flex flex-row items-center pr-3')}>
-            <Animated.Text
-              style={tailwind.style(
-                'text-base font-inter-normal-20 leading-[22px] tracking-[0.16px]',
-                listItem.subtitleType === 'light' ? 'text-gray-900' : 'text-gray-950',
-              )}>
-              {listItem.subtitle}
-            </Animated.Text>
+            {listItem.badgeText ? (
+              <Animated.View
+                style={tailwind.style(
+                  'rounded-full px-2 py-1',
+                  listItem.badgeType === 'accent' ? 'bg-blue-100' : 'bg-blackA-A3',
+                )}>
+                <Animated.Text
+                  style={tailwind.style(
+                    'text-xs font-inter-medium-24 leading-[14px]',
+                    listItem.badgeType === 'accent' ? 'text-blue-800' : 'text-gray-800',
+                  )}>
+                  {listItem.badgeText}
+                </Animated.Text>
+              </Animated.View>
+            ) : (
+              <Animated.Text
+                style={tailwind.style(
+                  'text-base font-inter-normal-20 leading-[22px] tracking-[0.16px]',
+                  listItem.subtitleType === 'light' ? 'text-gray-900' : 'text-gray-950',
+                )}>
+                {listItem.subtitle}
+              </Animated.Text>
+            )}
             {listItem.hasChevron ? <Icon icon={<CaretRight />} size={20} /> : null}
           </Animated.View>
         </Animated.View>

@@ -20,7 +20,7 @@ import {
   selectIsLoadingNotifications,
   getFilteredNotifications,
 } from '@/store/notification/notificationSelectors';
-import { InboxHeader, InboxItemContainer } from './components';
+import { InboxHeader, InboxItemContainer, WeeklyPlanner } from './components';
 import { useInboxListStateContext } from '@/context';
 import { resetNotifications } from '@/store/notification/notificationSlice';
 import { showToast } from '@/utils/toastUtils';
@@ -134,6 +134,8 @@ const InboxList = () => {
 
   const shouldShowEmptyLoader = isNotificationsLoading && notifications.length === 0;
 
+  const ListHeaderComponent = <WeeklyPlanner />;
+
   return shouldShowEmptyLoader ? (
     <Animated.View
       style={tailwind.style('flex-1 items-center justify-center', `pb-[${TAB_BAR_HEIGHT}px]`)}>
@@ -142,14 +144,14 @@ const InboxList = () => {
   ) : notifications.length === 0 ? (
     <Animated.ScrollView
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
-      contentContainerStyle={tailwind.style(
-        'flex-1 items-center justify-center',
-        `pb-[${TAB_BAR_HEIGHT}px]`,
-      )}>
-      <EmptyStateIcon />
-      <Animated.Text style={tailwind.style('pt-6 text-md tracking-[0.32px] text-gray-800')}>
-        {i18n.t('NOTIFICATION.EMPTY')}
-      </Animated.Text>
+      contentContainerStyle={tailwind.style('flex-grow', `pb-[${TAB_BAR_HEIGHT}px]`)}>
+      {ListHeaderComponent}
+      <Animated.View style={tailwind.style('flex-1 items-center justify-center px-4')}>
+        <EmptyStateIcon />
+        <Animated.Text style={tailwind.style('pt-6 text-md tracking-[0.32px] text-gray-800')}>
+          {i18n.t('NOTIFICATION.EMPTY')}
+        </Animated.Text>
+      </Animated.View>
     </Animated.ScrollView>
   ) : (
     <AnimatedFlashlist
@@ -161,6 +163,7 @@ const InboxList = () => {
       onScroll={scrollHandler}
       onEndReached={handleOnEndReached}
       onEndReachedThreshold={0.5}
+      ListHeaderComponent={ListHeaderComponent}
       ListFooterComponent={ListFooterComponent}
       renderItem={handleRender}
       contentContainerStyle={tailwind.style(`pb-[${TAB_BAR_HEIGHT - 1}px]`)}

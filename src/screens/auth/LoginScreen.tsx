@@ -2,44 +2,83 @@ import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Animated, Image, Pressable, StatusBar, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import {
-  BottomSheetModal,
-  BottomSheetScrollView,
-  useBottomSheetSpringConfigs,
-} from '@gorhom/bottom-sheet';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import Svg, { Path } from 'react-native-svg';
 
 import { EMAIL_REGEX } from '@/constants';
-import { EyeIcon, EyeSlash, LockIcon } from '@/svg-icons';
+import { EyeIcon, EyeSlash, LockIcon, WhatsAppIcon } from '@/svg-icons';
 import { tailwind } from '@/theme';
 import i18n from '@/i18n';
 import { resetAuth } from '@/store/auth/authSlice';
 import { authActions } from '@/store/auth/authActions';
 import { useAppDispatch, useAppSelector } from '@/hooks';
 
-import {
-  BottomSheetBackdrop,
-  BottomSheetHeader,
-  LanguageList,
-  Button,
-  Icon,
-  AuthButton,
-} from '@/components-next';
-import {
-  selectInstallationUrl,
-  selectBaseUrl,
-  selectLocale,
-} from '@/store/settings/settingsSelectors';
+import { Button, Icon, AuthButton } from '@/components-next';
+import { selectInstallationUrl } from '@/store/settings/settingsSelectors';
 import { selectIsLoggingIn } from '@/store/auth/authSelectors';
-import { setLocale } from '@/store/settings/settingsSlice';
-import { useRefsContext } from '@/context/RefsContext';
 import { SsoUtils } from '@/utils/ssoUtils';
+import { openURL } from '@/utils/urlUtils';
 
 type FormData = {
   email: string;
   password: string;
 };
+
+const TERMS_URL = process.env.EXPO_PUBLIC_TERMS_URL || '';
+
+const AppleIcon = () => (
+  <Svg width="100%" height="100%" viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M16.72 13.03C16.7 10.65 18.67 9.51 18.76 9.45C17.64 7.81 15.9 7.59 15.29 7.57C13.83 7.42 12.41 8.44 11.67 8.44C10.91 8.44 9.77 7.59 8.54 7.62C6.95 7.64 5.47 8.57 4.65 10.03C2.97 12.93 4.22 17.19 5.83 19.54C6.64 20.69 7.58 21.98 8.81 21.93C10.02 21.88 10.47 21.17 11.93 21.17C13.38 21.17 13.8 21.93 15.06 21.9C16.35 21.88 17.17 20.74 17.95 19.58C18.88 18.26 19.25 16.96 19.27 16.89C19.24 16.88 16.75 15.93 16.72 13.03ZM14.34 6.02C14.99 5.21 15.44 4.12 15.31 3C14.37 3.04 13.19 3.65 12.52 4.44C11.92 5.14 11.38 6.27 11.53 7.35C12.59 7.43 13.66 6.81 14.34 6.02Z"
+      fill="#111827"
+    />
+  </Svg>
+);
+
+const GoogleIcon = () => (
+  <Svg width="100%" height="100%" viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M21.6 12.23C21.6 11.55 21.54 10.9 21.43 10.27H12V14.04H17.4C17.16 15.25 16.45 16.28 15.39 16.97V19.42H18.55C20.4 17.71 21.6 15.2 21.6 12.23Z"
+      fill="#4285F4"
+    />
+    <Path
+      d="M12 22C14.7 22 16.97 21.11 18.55 19.42L15.39 16.97C14.52 17.55 13.41 17.89 12 17.89C9.39 17.89 7.18 16.13 6.39 13.76H3.13V16.29C4.7 19.4 7.92 22 12 22Z"
+      fill="#34A853"
+    />
+    <Path
+      d="M6.39 13.76C6.19 13.18 6.08 12.55 6.08 11.9C6.08 11.25 6.19 10.62 6.39 10.04V7.51H3.13C2.47 8.83 2.1 10.32 2.1 11.9C2.1 13.48 2.47 14.97 3.13 16.29L6.39 13.76Z"
+      fill="#FBBC05"
+    />
+    <Path
+      d="M12 5.91C13.47 5.91 14.78 6.42 15.82 7.41L18.62 4.61C16.96 3.06 14.69 2.1 12 2.1C7.92 2.1 4.7 4.4 3.13 7.51L6.39 10.04C7.18 7.67 9.39 5.91 12 5.91Z"
+      fill="#EA4335"
+    />
+  </Svg>
+);
+
+type SocialLoginButtonProps = {
+  icon: React.ReactNode;
+  text: string;
+};
+
+const SocialLoginButton = ({ icon, text }: SocialLoginButtonProps) => (
+  <Pressable
+    onPress={() => {}}
+    style={tailwind.style(
+      'h-11 flex-row items-center justify-center rounded-[13px] border-[1px] border-blackA-A4 bg-white',
+    )}>
+    <View style={tailwind.style('absolute left-4 h-5 w-5 items-center justify-center')}>
+      {icon}
+    </View>
+    <Animated.Text
+      style={tailwind.style(
+        'text-base font-inter-medium-24 leading-[20px] tracking-[0.16px] text-gray-950',
+      )}>
+      {text}
+    </Animated.Text>
+  </Pressable>
+);
 
 const LoginScreen = () => {
   const navigation = useNavigation();
@@ -55,34 +94,14 @@ const LoginScreen = () => {
     },
   });
 
-  const { languagesModalSheetRef } = useRefsContext();
-
-  const animationConfigs = useBottomSheetSpringConfigs({
-    mass: 1,
-    stiffness: 420,
-    damping: 30,
-  });
-
   const dispatch = useAppDispatch();
   const isLoggingIn = useAppSelector(selectIsLoggingIn);
 
   const installationUrl = useAppSelector(selectInstallationUrl);
-  const baseUrl = useAppSelector(selectBaseUrl);
-  const activeLocale = useAppSelector(selectLocale);
-
-  useEffect(() => {
-    languagesModalSheetRef.current?.dismiss({
-      overshootClamping: true,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeLocale]);
 
   useEffect(() => {
     dispatch(resetAuth());
-    if (!installationUrl) {
-      navigation.navigate('ConfigureURL' as never);
-    }
-  }, [installationUrl, navigation, dispatch]);
+  }, [dispatch]);
 
   const onSubmit = async (data: FormData) => {
     const { email, password } = data;
@@ -112,12 +131,10 @@ const LoginScreen = () => {
     navigation.navigate('ResetPassword' as never);
   };
 
-  const openConfigInstallationURL = () => {
-    navigation.navigate('ConfigureURL' as never);
-  };
-
-  const onChangeLanguage = (locale: string) => {
-    dispatch(setLocale(locale));
+  const openTerms = () => {
+    if (TERMS_URL) {
+      openURL({ URL: TERMS_URL });
+    }
   };
 
   const handleSsoLogin = async () => {
@@ -150,22 +167,25 @@ const LoginScreen = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bottomOffset={24}
-          contentContainerStyle={tailwind.style('px-6 pt-24 pb-8')}>
-          <Image
-            // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-            source={require('@/assets/images/logo.png')}
-            style={tailwind.style('w-10 h-10')}
-            resizeMode="contain"
-          />
-          <View style={tailwind.style('pt-6 gap-4')}>
-            <Animated.Text style={tailwind.style('text-2xl text-gray-950 font-inter-semibold-20')}>
+          contentContainerStyle={tailwind.style('flex-grow justify-center px-6 py-10')}>
+          <View style={tailwind.style('items-center')}>
+            <Image
+              // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+              source={require('../../../assets/icon.png')}
+              style={tailwind.style('w-[88px] h-[88px]')}
+              resizeMode="contain"
+            />
+          </View>
+          <View style={tailwind.style('items-center pt-8 gap-3')}>
+            <Animated.Text
+              style={tailwind.style('text-2xl text-center text-gray-950 font-inter-semibold-20')}>
               {i18n.t('LOGIN.TITLE')}
             </Animated.Text>
             <Animated.Text
               style={tailwind.style(
-                'font-inter-normal-20 leading-[18px] tracking-[0.32px] text-gray-900',
+                'text-center font-inter-normal-20 leading-[18px] tracking-[0.32px] text-gray-900',
               )}>
-              {i18n.t('LOGIN.DESCRIPTION', { baseUrl })}
+              {i18n.t('LOGIN.DESCRIPTION')}
             </Animated.Text>
           </View>
 
@@ -200,10 +220,7 @@ const LoginScreen = () => {
               },
             }}
             render={({ field: { onChange, onBlur, value } }) => (
-              <View style={tailwind.style('pt-2 gap-2')}>
-                <Animated.Text style={tailwind.style('font-inter-420-20 text-gray-950')}>
-                  {i18n.t('LOGIN.EMAIL')}
-                </Animated.Text>
+              <View style={tailwind.style('pt-8 gap-2')}>
                 <TextInput
                   style={[
                     tailwind.style(
@@ -215,7 +232,8 @@ const LoginScreen = () => {
                   onBlur={onBlur}
                   onChangeText={onChange}
                   value={value}
-                  placeholderTextColor={tailwind.color('text-gray-900')}
+                  placeholder={i18n.t('LOGIN.EMAIL')}
+                  placeholderTextColor={tailwind.color('text-gray-500')}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
@@ -239,10 +257,7 @@ const LoginScreen = () => {
               },
             }}
             render={({ field: { onChange, onBlur, value } }) => (
-              <View style={tailwind.style('pt-8 gap-2')}>
-                <Animated.Text style={tailwind.style('font-inter-420-20  text-gray-950')}>
-                  {i18n.t('LOGIN.PASSWORD')}
-                </Animated.Text>
+              <View style={tailwind.style('pt-5 gap-2')}>
                 <View style={tailwind.style('relative')}>
                   <TextInput
                     style={[
@@ -255,6 +270,7 @@ const LoginScreen = () => {
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
+                    placeholder={i18n.t('LOGIN.PASSWORD')}
                     placeholderTextColor={tailwind.color('text-gray-500')}
                     secureTextEntry={!showPassword}
                   />
@@ -274,8 +290,8 @@ const LoginScreen = () => {
             name="password"
           />
 
-          <Pressable style={tailwind.style('pt-1 mb-8')} onPress={openResetPassword}>
-            <Animated.Text style={tailwind.style('text-blue-800 font-inter-medium-24 text-right')}>
+          <Pressable style={tailwind.style('items-center pt-1 mb-8')} onPress={openResetPassword}>
+            <Animated.Text style={tailwind.style('text-blue-800 font-inter-medium-24 text-center')}>
               {i18n.t('LOGIN.FORGOT_PASSWORD')}
             </Animated.Text>
           </Pressable>
@@ -284,38 +300,38 @@ const LoginScreen = () => {
             text={isLoggingIn ? i18n.t('LOGIN.LOGIN_LOADING') : i18n.t('LOGIN.LOGIN')}
             handlePress={handleSubmit(onSubmit)}
           />
-
-          <Pressable
-            style={tailwind.style('flex-row justify-center items-center mt-6')}
-            onPress={openConfigInstallationURL}>
-            <Animated.Text style={tailwind.style('text-sm text-gray-900')}>
-              {i18n.t('LOGIN.CHANGE_URL')}
+          <View style={tailwind.style('flex-row items-center my-6')}>
+            <View style={tailwind.style('flex-1 h-px bg-blackA-A4')} />
+            <Animated.Text
+              style={tailwind.style('px-4 text-sm font-inter-420-20 leading-[17px] text-gray-800')}>
+              {i18n.t('LOGIN.OR')}
             </Animated.Text>
-          </Pressable>
-          <Pressable
-            style={tailwind.style('flex-row justify-center items-center mt-4')}
-            onPress={() => languagesModalSheetRef.current?.present()}>
-            <Animated.Text style={tailwind.style('text-sm text-gray-900')}>
-              {i18n.t('LOGIN.CHANGE_LANGUAGE')}
+            <View style={tailwind.style('flex-1 h-px bg-blackA-A4')} />
+          </View>
+          <View style={tailwind.style('gap-3')}>
+            <SocialLoginButton icon={<AppleIcon />} text={i18n.t('LOGIN.CONTINUE_WITH_APPLE')} />
+            <SocialLoginButton icon={<GoogleIcon />} text={i18n.t('LOGIN.CONTINUE_WITH_GOOGLE')} />
+            <SocialLoginButton
+              icon={<WhatsAppIcon />}
+              text={i18n.t('LOGIN.CONTINUE_WITH_WHATSAPP')}
+            />
+          </View>
+          <View style={tailwind.style('mt-6 flex-row flex-wrap justify-center px-2')}>
+            <Animated.Text
+              style={tailwind.style(
+                'text-center text-sm font-inter-normal-20 leading-[18px] text-gray-800',
+              )}>
+              {i18n.t('LOGIN.TERMS_PREFIX')}{' '}
             </Animated.Text>
-          </Pressable>
+            <Pressable onPress={openTerms} hitSlop={8}>
+              <Animated.Text
+                style={tailwind.style('text-sm font-inter-medium-24 leading-[18px] text-blue-800')}>
+                {i18n.t('LOGIN.TERMS_OF_USE')}
+              </Animated.Text>
+            </Pressable>
+          </View>
         </KeyboardAwareScrollView>
       </View>
-      <BottomSheetModal
-        ref={languagesModalSheetRef}
-        backdropComponent={BottomSheetBackdrop}
-        handleIndicatorStyle={tailwind.style('overflow-hidden bg-blackA-A6 w-8 h-1 rounded-[11px]')}
-        detached
-        enablePanDownToClose
-        animationConfigs={animationConfigs}
-        handleStyle={tailwind.style('p-0 h-4 pt-[5px]')}
-        style={tailwind.style('rounded-[26px] overflow-hidden')}
-        snapPoints={['70%']}>
-        <BottomSheetScrollView showsVerticalScrollIndicator={false}>
-          <BottomSheetHeader headerText={i18n.t('SETTINGS.SET_LANGUAGE')} />
-          <LanguageList onChangeLanguage={onChangeLanguage} currentLanguage={activeLocale} />
-        </BottomSheetScrollView>
-      </BottomSheetModal>
     </SafeAreaView>
   );
 };

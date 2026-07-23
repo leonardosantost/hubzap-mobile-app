@@ -29,6 +29,7 @@ import { ConversationHeaderPresenter } from './ConversationHeaderPresenter';
 import { useAppDispatch, useAppSelector } from '@/hooks';
 import { useNavigation } from '@react-navigation/native';
 import { StackActions } from '@react-navigation/native';
+import type { ConversationViewMode } from './ConversationHeaderPresenter';
 
 const getFiltersAppliedCount = (defaultState: FilterState, updatedState: FilterState): number => {
   let count = 0;
@@ -41,7 +42,12 @@ const getFiltersAppliedCount = (defaultState: FilterState, updatedState: FilterS
   return count;
 };
 
-export const ConversationHeader = () => {
+type ConversationHeaderProps = {
+  viewMode: ConversationViewMode;
+  onViewModeChange: (mode: ConversationViewMode) => void;
+};
+
+export const ConversationHeader = ({ viewMode, onViewModeChange }: ConversationHeaderProps) => {
   const currentState = useAppSelector(selectCurrentState);
 
   const filters = useAppSelector(selectFilters);
@@ -126,8 +132,10 @@ export const ConversationHeader = () => {
     <Animated.View style={[tailwind.style('border-b-[1px]'), headerBorderAnimation]}>
       <ConversationHeaderPresenter
         currentState={currentState}
+        viewMode={viewMode}
         isSelectedAll={isSelectedAll}
         filtersAppliedCount={filtersAppliedCount}
+        onViewModeChange={onViewModeChange}
         onLeftIconPress={handleLeftIconPress}
         onRightIconPress={handleRightIconPress}
         onClearFilter={handleClearFilter}

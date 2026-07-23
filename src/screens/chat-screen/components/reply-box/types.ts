@@ -12,3 +12,5 @@ export type AddCommandButtonProps = PressableProps & {
 export type PhotosCommandButtonProps = PressableProps & {};
 
 export type VoiceRecordButtonProps = PressableProps & {};
+
+export type CameraCommandButtonProps = PressableProps & {};

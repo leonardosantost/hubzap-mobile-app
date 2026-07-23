@@ -1,4 +1,10 @@
-import { fromUnixTime, formatDistanceToNow, isSameDay, format } from 'date-fns';
+import {
+  fromUnixTime,
+  formatDistanceToNow,
+  isSameDay,
+  format,
+  differenceInCalendarDays,
+} from 'date-fns';
 import i18n from '@/i18n';
 import { UnixTimestamp } from '@/types';
 
@@ -70,4 +76,30 @@ export const messageStamp = ({
 }) => {
   const unixTime = fromUnixTime(time);
   return format(unixTime, dateFormat);
+};
+
+export const formatConversationListTime = (time: number) => {
+  const date = fromUnixTime(time);
+  const now = new Date();
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInDays = differenceInCalendarDays(now, date);
+
+  if (diffInMs < 60000) {
+    return 'agora';
+  }
+
+  if (diffInDays === 0) {
+    return format(date, 'HH:mm');
+  }
+
+  if (diffInDays === 1) {
+    return 'ontem';
+  }
+
+  if (diffInDays > 1 && diffInDays < 7) {
+    const locale = i18n.locale?.replace('_', '-') || 'pt-BR';
+    return new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);
+  }
+
+  return format(date, 'dd/MM/yyyy');
 };

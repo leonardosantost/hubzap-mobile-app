@@ -20,14 +20,14 @@ interface SettingsState {
   pushToken: string;
 }
 const initialState: SettingsState = {
-  baseUrl: 'app.chatwoot.com',
-  installationUrl: 'https://app.chatwoot.com/',
+  baseUrl: 'crm.teixeiramilitar.com.br',
+  installationUrl: 'https://crm.teixeiramilitar.com.br/',
   uiFlags: {
     isSettingUrl: false,
     isUpdating: false,
     isLocaleSet: false,
   },
-  localeValue: 'en',
+  localeValue: 'pt_BR',
   notificationSettings: {
     account_id: 0,
     all_email_flags: [],
@@ -37,7 +37,7 @@ const initialState: SettingsState = {
     selected_push_flags: [],
     user_id: 0,
   },
-  webSocketUrl: 'wss://app.chatwoot.com/cable',
+  webSocketUrl: 'wss://crm.teixeiramilitar.com.br/cable',
   theme: 'system',
   version: '',
   pushToken: '',

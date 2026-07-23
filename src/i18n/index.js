@@ -35,7 +35,7 @@ import vi from './vi.json';
 import zh_CN from './zh_CN.json';
 import zh_TW from './zh_TW.json';
 
-i18n.locale = 'en';
+i18n.locale = 'pt_BR';
 i18n.fallbacks = true;
 i18n.translations = {
   af,

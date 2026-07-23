@@ -88,6 +88,11 @@ export const ChatHeaderContainer = (props: ChatScreenHeaderProps) => {
   }, [createTimer, updateSlaStatus]);
 
   const handleBackPress = () => {
+    if (pagerViewIndex === 1) {
+      chatPagerView.current?.setPage(0);
+      return;
+    }
+
     dispatch(resetSentMessage());
     if (navigation.canGoBack()) {
       navigation.dispatch(StackActions.pop());
@@ -97,8 +102,7 @@ export const ChatHeaderContainer = (props: ChatScreenHeaderProps) => {
   };
 
   const handleNavigationToContactDetails = () => {
-    const navigateToScreen = StackActions.push('ContactDetails', { conversationId });
-    navigation.dispatch(navigateToScreen);
+    chatPagerView.current?.setPage(1);
   };
 
   const handleNavigation = (url?: string, title?: string) => {

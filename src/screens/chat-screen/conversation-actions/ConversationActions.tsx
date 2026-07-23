@@ -6,20 +6,20 @@ import { BottomSheetModal, useBottomSheetSpringConfigs } from '@gorhom/bottom-sh
 
 import { BottomSheetBackdrop, Button } from '@/components-next';
 import {
-  ConversationBasicActions,
-  ConversationLabelActions,
   ConversationSettingsPanel,
   AddParticipantList,
   UpdateParticipant,
+  ConversationContactHeader,
+  ConversationLabelButtons,
+  ContactNotesPanel,
+  EditableContactAttributes,
 } from './components';
 import { TAB_BAR_HEIGHT } from '@/constants';
 import { tailwind } from '@/theme';
 import i18n from '@/i18n';
-import { ConversationStatus } from '@/types';
 import { useChatWindowContext } from '@/context';
 import { useAppDispatch, useAppSelector } from '@/hooks';
 import { selectConversationById } from '@/store/conversation/conversationSelectors';
-import { conversationActions } from '@/store/conversation/conversationActions';
 
 import { setActionState } from '@/store/conversation/conversationActionSlice';
 import { useRefsContext } from '@/context';
@@ -29,6 +29,8 @@ import { selectAllTeams } from '@/store/team/teamSelectors';
 import { selectInstallationUrl } from '@/store/settings/settingsSelectors';
 import { ConversationMetaInformation } from './components/ConversationMetaInformation';
 import { selectConversationParticipantsByConversationId } from '@/store/conversation-participant/conversationParticipantSelectors';
+import { selectContactById } from '@/store/contact/contactSelectors';
+import { getContactCustomAttributes } from '@/store/custom-attribute/customAttributeSlice';
 
 const SCREEN_WIDTH = Dimensions.get('screen').width;
 
@@ -47,9 +49,15 @@ export const ConversationActions = () => {
 
   const installationUrl = useAppSelector(selectInstallationUrl);
 
-  const { status, muted: isMuted, meta, priority = null } = conversation || {};
+  const { meta, priority = null } = conversation || {};
   const { assignee, team } = meta || {};
   const teams = useAppSelector(selectAllTeams);
+  const sender = meta?.sender || null;
+  const storedContact = useAppSelector(state =>
+    sender?.id ? selectContactById(state, sender.id) : null,
+  );
+  const contact = storedContact || sender;
+  const contactCustomAttributes = useAppSelector(getContactCustomAttributes);
 
   const currentTeam = teams.find(t => t.id === team?.id) || null;
 
@@ -76,21 +84,6 @@ export const ConversationActions = () => {
       });
     } catch (error) {
       Alert.alert((error as Error).message);
-    }
-  };
-
-  const updateConversationStatus = (type: ConversationActionType, status?: ConversationStatus) => {
-    if (type === 'mute') {
-      dispatch(conversationActions.muteConversation({ conversationId }));
-    } else if (type === 'unmute') {
-      dispatch(conversationActions.unmuteConversation({ conversationId }));
-    } else {
-      dispatch(
-        conversationActions.toggleConversationStatus({
-          conversationId,
-          payload: { status: status as ConversationStatus, snoozed_until: null },
-        }),
-      );
     }
   };
 
@@ -126,11 +119,22 @@ export const ConversationActions = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={tailwind.style(`pb-[${TAB_BAR_HEIGHT}]`)}>
-        <ConversationBasicActions
-          status={status}
-          updateConversationStatus={updateConversationStatus}
-          isMuted={isMuted || false}
-        />
+        <ConversationContactHeader contact={contact} />
+        {conversation ? (
+          <ConversationLabelButtons conversation={conversation} selectedLabels={currentLabels} />
+        ) : null}
+        <Animated.View style={tailwind.style('pt-10')}>
+          <ContactNotesPanel note={contact?.additionalAttributes?.description} />
+        </Animated.View>
+        {conversation && contact ? (
+          <Animated.View style={tailwind.style('pt-10')}>
+            <EditableContactAttributes
+              contact={contact}
+              conversation={conversation}
+              customAttributeDefinitions={contactCustomAttributes}
+            />
+          </Animated.View>
+        ) : null}
         <Animated.View style={tailwind.style('pt-10')}>
           <ConversationSettingsPanel
             assignee={assignee || null}
@@ -140,9 +144,6 @@ export const ConversationActions = () => {
             onChangeTeamAssignee={onChangeTeamAssignee}
             onChangePriority={onChangePriority}
           />
-        </Animated.View>
-        <Animated.View style={tailwind.style('pt-10')}>
-          <ConversationLabelActions labels={currentLabels} />
         </Animated.View>
         <Animated.View style={tailwind.style('pt-10')}>
           <AddParticipantList

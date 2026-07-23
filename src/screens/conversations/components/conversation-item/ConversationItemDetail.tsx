@@ -7,17 +7,16 @@ import { isEqual } from 'lodash';
 import { Avatar } from '@/components-next/common';
 import { AnimatedNativeView, NativeView } from '@/components-next/native-components';
 import { tailwind } from '@/theme';
-import { Agent, Conversation, ConversationAdditionalAttributes, Label, Message } from '@/types';
+import { Agent, Conversation, Label, Message } from '@/types';
 
 import { ConversationId } from './ConversationId';
 import { ConversationLastMessage } from './ConversationLastMessage';
-import { PriorityIndicator, ChannelIndicator } from '@/components-next/list-components';
+import { PriorityIndicator } from '@/components-next/list-components';
 import { UnreadIndicator } from './UnreadIndicator';
 import { SLAIndicator } from './SLAIndicator';
 import { LabelIndicator } from './LabelIndicator';
 import { LastActivityTime } from './LastActivityTime';
 import { SLA } from '@/types/common/SLA';
-import { Inbox } from '@/types/Inbox';
 import { TypingMessage } from './TypingMessage';
 
 const { width } = Dimensions.get('screen');
@@ -30,7 +29,6 @@ type ConversationDetailSubCellProps = Pick<
   assignee: Agent | null;
   timestamp: number;
   lastMessage?: Message | null;
-  inbox: Inbox | null;
   appliedSla: SLA | null;
   appliedSlaConversationDetails?:
     | {
@@ -39,7 +37,6 @@ type ConversationDetailSubCellProps = Pick<
         status: string;
       }
     | Record<string, never>;
-  additionalAttributes?: ConversationAdditionalAttributes;
   allLabels: Label[];
   typingText?: string;
 };
@@ -63,10 +60,8 @@ export const ConversationItemDetail = memo((props: ConversationDetailSubCellProp
     timestamp,
     slaPolicyId,
     lastMessage,
-    inbox,
     appliedSla,
     appliedSlaConversationDetails,
-    additionalAttributes,
     allLabels,
     typingText,
   } = props;
@@ -104,8 +99,7 @@ export const ConversationItemDetail = memo((props: ConversationDetailSubCellProp
         </AnimatedNativeView>
         <AnimatedNativeView style={tailwind.style('flex flex-row items-center gap-2')}>
           {hasPriority ? <PriorityIndicator {...{ priority }} /> : null}
-          {inbox && <ChannelIndicator inbox={inbox} additionalAttributes={additionalAttributes} />}
-          <LastActivityTime timestamp={timestamp} />
+          <LastActivityTime timestamp={timestamp} isUnread={unreadCount >= 1} />
         </AnimatedNativeView>
       </AnimatedNativeView>
       {hasLabels || hasSLA ? (

@@ -3,7 +3,7 @@ import { Text } from 'react-native';
 
 import { tailwind } from '@/theme';
 import { NativeView } from '@/components-next/native-components';
-import { formatTimeToShortForm, formatRelativeTime } from '@/utils/dateTimeUtils';
+import { formatConversationListTime } from '@/utils/dateTimeUtils';
 
 // Constants from Vue component
 const MINUTE_IN_MS = 60000;
@@ -12,12 +12,11 @@ const DAY_IN_MS = HOUR_IN_MS * 24;
 
 type LastActivityTimeProps = {
   timestamp: number;
+  isUnread?: boolean;
 };
 
-export const LastActivityTime = ({ timestamp }: LastActivityTimeProps) => {
-  const [lastActivityTime, setLastActivityTime] = useState(
-    formatTimeToShortForm(formatRelativeTime(timestamp)),
-  );
+export const LastActivityTime = ({ timestamp, isUnread = false }: LastActivityTimeProps) => {
+  const [lastActivityTime, setLastActivityTime] = useState(formatConversationListTime(timestamp));
 
   useEffect(() => {
     const getRefreshTime = () => {
@@ -28,24 +27,27 @@ export const LastActivityTime = ({ timestamp }: LastActivityTimeProps) => {
     };
 
     const updateTime = () => {
-      setLastActivityTime(formatTimeToShortForm(formatRelativeTime(timestamp)));
+      setLastActivityTime(formatConversationListTime(timestamp));
     };
 
-    const timer = setTimeout(function refresh() {
+    let timer: NodeJS.Timeout;
+
+    const refresh = () => {
       updateTime();
-      // Set up next refresh
-      setTimeout(refresh, getRefreshTime());
-    }, getRefreshTime());
+      timer = setTimeout(refresh, getRefreshTime());
+    };
+
+    timer = setTimeout(refresh, getRefreshTime());
 
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [timestamp]);
 
   return (
     <NativeView>
       <Text
         style={tailwind.style(
-          'text-sm font-inter-420-20 leading-[16px] tracking-[0.32px] text-gray-700',
+          'text-sm font-inter-420-20 leading-[16px] tracking-[0.32px]',
+          isUnread ? 'text-blue-800' : 'text-gray-700',
         )}>
         {lastActivityTime}
       </Text>

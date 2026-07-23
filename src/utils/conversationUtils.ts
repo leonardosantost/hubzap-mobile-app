@@ -10,9 +10,14 @@ const filterByStatus = (chatStatus: string, filterStatus: string) =>
   filterStatus === 'all' ? true : chatStatus === filterStatus;
 
 export const shouldApplyFilters = (conversation: Conversation, filters: FilterState) => {
-  const { inbox_id: inboxId, status } = filters;
+  const { inbox_id: inboxId, status, label } = filters;
   const { status: chatStatus, inboxId: chatInboxId } = conversation;
   let shouldFilter = filterByStatus(chatStatus, status);
+
+  if (label) {
+    shouldFilter = shouldFilter && conversation.labels.includes(label);
+  }
+
   const hasInboxFilter = inboxId && inboxId !== '0';
   if (hasInboxFilter) {
     const filterByInbox = Number(inboxId) === chatInboxId;

@@ -9,7 +9,6 @@ import { Icon } from '@/components-next/common/icon';
 import { DoubleCheckIcon, InboxFilterIcon } from '@/svg-icons';
 import { tailwind } from '@/theme';
 import { InboxFilters } from './InboxFilters';
-import i18n from '@/i18n';
 import { useRefsContext } from '@/context';
 
 type InboxHeaderProps = {
@@ -43,7 +42,7 @@ export const InboxHeader = (props: InboxHeaderProps) => {
             style={tailwind.style(
               'text-[17px] text-center leading-[17px] tracking-[0.32px] font-inter-medium-24 text-gray-950',
             )}>
-            {i18n.t('NOTIFICATION.INBOX')}
+            Tarefas
           </Animated.Text>
         </Animated.View>
         <Animated.View style={tailwind.style('flex-1 items-end')}>

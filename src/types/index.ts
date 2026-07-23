@@ -20,6 +20,8 @@ export interface GenericListType {
   icon?: React.ReactNode;
   subtitle?: string;
   subtitleType?: 'dark' | 'light';
+  badgeText?: string;
+  badgeType?: 'default' | 'accent';
   hasChevron?: boolean;
   disabled?: boolean;
   link?: string;
@@ -45,7 +47,12 @@ export interface AttributeListType {
  * The types of Filter for Conversation List
  */
 
-export type ConversationFilterOptions = 'assignee_type' | 'status' | 'sort_by' | 'inbox_id';
+export type ConversationFilterOptions =
+  | 'assignee_type'
+  | 'status'
+  | 'sort_by'
+  | 'inbox_id'
+  | 'label';
 
 // Defining the specific options for each filter type
 export type AssigneeFilterOptions = Record<AssigneeTypes, string>;
@@ -62,7 +69,9 @@ export type FilterOption<T extends ConversationFilterOptions> = {
         ? SortFilterOptions
         : T extends 'inbox_id'
           ? Record<number, string>
-          : never;
+          : T extends 'label'
+            ? Record<string, string>
+            : never;
   defaultFilter: string;
 };
 

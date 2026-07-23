@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, RefreshControl, StatusBar } from 'react-native';
+import {
+  ActivityIndicator,
+  AppState,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  Text,
+} from 'react-native';
 import Animated, {
   LinearTransition,
   runOnJS,
@@ -13,6 +21,7 @@ import {
   useBottomSheetModal,
 } from '@gorhom/bottom-sheet';
 import { FlashList } from '@shopify/flash-list';
+import { StackActions, useNavigation } from '@react-navigation/native';
 
 import {
   ConversationItemContainer,
@@ -23,7 +32,7 @@ import {
   AssigneeTypeFilters,
 } from './components';
 
-import { ActionTabs, BottomSheetBackdrop, BottomSheetWrapper } from '@/components-next';
+import { ActionTabs, BottomSheetBackdrop, BottomSheetWrapper, SearchBar } from '@/components-next';
 
 import { EmptyStateIcon } from '@/svg-icons';
 import {
@@ -46,6 +55,7 @@ import {
   setBottomSheetState,
 } from '@/store/conversation/conversationHeaderSlice';
 import { resetActionState } from '@/store/conversation/conversationActionSlice';
+import { setFilters } from '@/store/conversation/conversationFilterSlice';
 import { conversationActions } from '@/store/conversation/conversationActions';
 import {
   selectConversationsLoading,
@@ -58,11 +68,15 @@ import { clearAllConversations } from '@/store/conversation/conversationSlice';
 import { selectUserId } from '@/store/auth/authSelectors';
 import { clearAllContacts } from '@/store/contact/contactSlice';
 import { clearAssignableAgents } from '@/store/assignable-agent/assignableAgentSlice';
+import { selectAllLabels } from '@/store/label/labelSelectors';
 
 import i18n from '@/i18n';
 import ActionBottomSheet from '@/navigation/tabs/ActionBottomSheet';
 import { getCurrentRouteName } from '@/utils/navigationUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { Label } from '@/types';
+import { SalesFunnelBoard } from '@/screens/sales-funnel/SalesFunnelScreen';
+import type { ConversationViewMode } from './components/conversation-header/ConversationHeaderPresenter';
 
 // The screen list thats need to be checked for refreshing the conversations list
 const REFRESH_SCREEN_LIST = [SCREENS.CONVERSATION, SCREENS.INBOX, SCREENS.SETTINGS];
@@ -74,9 +88,106 @@ type FlashListRenderItemType = {
   index: number;
 };
 
+const shouldRefetchForFilterChange = (previousFilters: FilterState, updatedFilters: FilterState) =>
+  previousFilters.assignee_type !== updatedFilters.assignee_type ||
+  previousFilters.status !== updatedFilters.status ||
+  previousFilters.sort_by !== updatedFilters.sort_by ||
+  previousFilters.inbox_id !== updatedFilters.inbox_id;
+
+const LabelFilterChip = ({
+  title,
+  isActive,
+  color,
+  onPress,
+}: {
+  title: string;
+  isActive: boolean;
+  color?: string;
+  onPress: () => void;
+}) => (
+  <Pressable
+    onPress={onPress}
+    style={tailwind.style(
+      'h-8 px-3 mr-2 rounded-full flex-row items-center justify-center border-[1px]',
+      isActive ? 'bg-blue-800 border-blue-800' : 'bg-white border-blackA-A3',
+    )}>
+    {color ? (
+      <Animated.View
+        style={tailwind.style(
+          'h-2 w-2 rounded-full mr-1.5',
+          isActive ? 'bg-white' : `bg-[${color}]`,
+        )}
+      />
+    ) : null}
+    <Text
+      numberOfLines={1}
+      style={tailwind.style(
+        'text-sm font-inter-medium-24 leading-[17px]',
+        isActive ? 'text-white' : 'text-gray-900',
+      )}>
+      {title}
+    </Text>
+  </Pressable>
+);
+
+const LabelFilterCarousel = ({
+  labels,
+  selectedLabel,
+  onLabelPress,
+}: {
+  labels: Label[];
+  selectedLabel: string;
+  onLabelPress: (label: string) => void;
+}) => (
+  <ScrollView
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    contentContainerStyle={tailwind.style('px-3 pt-1 pb-2')}>
+    <LabelFilterChip title="Todas" isActive={!selectedLabel} onPress={() => onLabelPress('')} />
+    {labels.map(label => (
+      <LabelFilterChip
+        key={label.id}
+        title={label.title}
+        color={label.color}
+        isActive={selectedLabel === label.title}
+        onPress={() => onLabelPress(label.title)}
+      />
+    ))}
+  </ScrollView>
+);
+
+const ConversationSearchHeader = ({
+  labels,
+  selectedLabel,
+  onSearchPress,
+  onLabelPress,
+}: {
+  labels: Label[];
+  selectedLabel: string;
+  onSearchPress: () => void;
+  onLabelPress: (label: string) => void;
+}) => (
+  <>
+    <Pressable onPress={onSearchPress} style={tailwind.style('pt-3 pb-1')}>
+      <SearchBar
+        editable={false}
+        pointerEvents="none"
+        placeholder={i18n.t('CONVERSATION.SEARCH_PLACEHOLDER')}
+        value=""
+      />
+    </Pressable>
+    <LabelFilterCarousel
+      labels={labels}
+      selectedLabel={selectedLabel}
+      onLabelPress={onLabelPress}
+    />
+  </>
+);
+
 const ConversationList = () => {
   const { dismissAll } = useBottomSheetModal();
   const dispatch = useAppDispatch();
+  const navigation = useNavigation();
   const [appState, setAppState] = useState(AppState.currentState);
 
   // This is used to prevent the infinite scrolling before the list is ready
@@ -85,6 +196,7 @@ const ConversationList = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   // This is used for pagination
   const [pageNumber, setPageNumber] = useState(1);
+  const isLoadingMoreLabels = useRef(false);
   const userId = useAppSelector(selectUserId);
 
   // This is used to store the index of the item that is currently selected
@@ -107,6 +219,7 @@ const ConversationList = () => {
   }, []);
 
   const filters = useAppSelector(selectFilters);
+  const labels = useAppSelector(selectAllLabels);
   const previousFilters = useRef(filters);
 
   // Reset last active timestamp when the conversation screen is opened
@@ -116,8 +229,12 @@ const ConversationList = () => {
 
   useEffect(() => {
     if (previousFilters.current !== filters) {
+      const shouldRefetch = shouldRefetchForFilterChange(previousFilters.current, filters);
       previousFilters.current = filters;
-      clearAndFetchConversations(filters);
+
+      if (shouldRefetch) {
+        clearAndFetchConversations(filters);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
@@ -138,6 +255,7 @@ const ConversationList = () => {
   }, []);
 
   const ListFooterComponent = () => {
+    if (filters.label) return null;
     if (isAllConversationsFetched) return null;
     return (
       <Animated.View
@@ -200,9 +318,10 @@ const ConversationList = () => {
         page: page,
         sortBy: filters.sort_by,
         inboxId: parseInt(filters.inbox_id),
+        labels: filters.label ? [filters.label] : undefined,
       } as ConversationPayload;
 
-      dispatch(conversationActions.fetchConversations(conversationFilters));
+      return dispatch(conversationActions.fetchConversations(conversationFilters)).unwrap();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -214,13 +333,67 @@ const ConversationList = () => {
     fetchConversations(filters, nextPageNumber);
   };
 
+  const fetchLabelConversationsInBackground = useCallback(
+    async (updatedFilters: FilterState) => {
+      if (!updatedFilters.label || isLoadingMoreLabels.current) {
+        return;
+      }
+
+      isLoadingMoreLabels.current = true;
+
+      try {
+        let nextPage = 1;
+        let shouldKeepFetching = true;
+
+        while (shouldKeepFetching) {
+          const response = await fetchConversations(updatedFilters, nextPage);
+          shouldKeepFetching = response.conversations.length >= 20;
+          nextPage += 1;
+        }
+
+        setPageNumber(nextPage - 1);
+      } finally {
+        isLoadingMoreLabels.current = false;
+      }
+    },
+    [fetchConversations],
+  );
+
   const handleOnEndReached = () => {
     const shouldLoadMoreConversations =
-      isFlashListReady && !isAllConversationsFetched && !isConversationsLoading;
+      !filters.label && isFlashListReady && !isAllConversationsFetched && !isConversationsLoading;
     if (shouldLoadMoreConversations) {
       onChangePageNumber();
     }
   };
+
+  const handleSearchPress = useCallback(() => {
+    navigation.dispatch(StackActions.push('SearchScreen'));
+  }, [navigation]);
+
+  const handleLabelPress = useCallback(
+    (label: string) => {
+      const updatedFilters = { ...filters, label };
+      dispatch(setFilters({ key: 'label', value: label }));
+
+      if (label) {
+        fetchLabelConversationsInBackground(updatedFilters);
+      }
+    },
+    [dispatch, fetchLabelConversationsInBackground, filters],
+  );
+
+  const listHeaderComponent = useMemo(
+    () => (
+      <ConversationSearchHeader
+        labels={labels}
+        selectedLabel={filters.label}
+        onSearchPress={handleSearchPress}
+        onLabelPress={handleLabelPress}
+      />
+    ),
+    [filters.label, handleLabelPress, handleSearchPress, labels],
+  );
 
   const scrollHandler = useAnimatedScrollHandler({
     onBeginDrag: () => {
@@ -264,6 +437,7 @@ const ConversationList = () => {
       onScroll={scrollHandler}
       onEndReached={handleOnEndReached}
       onEndReachedThreshold={0.5}
+      ListHeaderComponent={listHeaderComponent}
       ListFooterComponent={ListFooterComponent}
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
@@ -276,6 +450,7 @@ const ConversationList = () => {
 const ConversationScreen = () => {
   const currentBottomSheet = useAppSelector(selectBottomSheetState);
   const dispatch = useAppDispatch();
+  const [viewMode, setViewMode] = useState<ConversationViewMode>('list');
 
   const animationConfigs = useBottomSheetSpringConfigs({
     mass: 1.2,
@@ -317,8 +492,8 @@ const ConversationScreen = () => {
         barStyle={'dark-content'}
       />
       <ConversationListStateProvider>
-        <ConversationHeader />
-        <ConversationList />
+        <ConversationHeader viewMode={viewMode} onViewModeChange={setViewMode} />
+        {viewMode === 'list' ? <ConversationList /> : <SalesFunnelBoard />}
         <BottomSheetModal
           ref={filtersModalSheetRef}
           backdropComponent={BottomSheetBackdrop}
@@ -338,8 +513,12 @@ const ConversationScreen = () => {
             {currentBottomSheet === 'inbox_id' ? <InboxFilters /> : null}
           </BottomSheetWrapper>
         </BottomSheetModal>
-        <ActionBottomSheet />
-        <ActionTabs />
+        {viewMode === 'list' ? (
+          <>
+            <ActionBottomSheet />
+            <ActionTabs />
+          </>
+        ) : null}
       </ConversationListStateProvider>
     </SafeAreaView>
   );

@@ -241,6 +241,12 @@ export const NOTIFICATION_PREFERENCE_TYPES = {
   push_sla_missed_resolution: 'CONVERSATION_SLA_MISSED_RESOLUTION',
 };
 
+export const SLA_NOTIFICATION_FLAGS = [
+  'push_sla_missed_first_response',
+  'push_sla_missed_next_response',
+  'push_sla_missed_resolution',
+];
+
 export const NOTIFICATION_TYPES = [
   'conversation_creation',
   'conversation_assignment',

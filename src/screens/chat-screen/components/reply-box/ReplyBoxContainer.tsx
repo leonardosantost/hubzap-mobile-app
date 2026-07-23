@@ -69,6 +69,7 @@ import { getLastEmailInSelectedChat } from '@/store/conversation/conversationSel
 import { selectAssignableParticipantsByInboxId } from '@/store/assignable-agent/assignableAgentSelectors';
 import { AudioRecorder } from '../audio-recorder/AudioRecorder';
 import { VoiceRecordButton } from './buttons/VoiceRecordButton';
+import { CameraCommandButton } from './buttons/CameraCommandButton';
 import { CopilotButton } from './buttons/CopilotButton';
 import { CopilotMenu } from '../copilot/CopilotMenu';
 import { CopilotEditorSection } from '../copilot/CopilotEditorSection';
@@ -85,6 +86,7 @@ import {
 } from '@/store/copilot/copilotSlice';
 import { executeCopilotAction, sendCopilotFollowUp } from '@/store/copilot/copilotActions';
 import type { CopilotActionKey } from '@/types/Copilot';
+import { handleLaunchCamera } from '../message-components/CommandOptionsMenu';
 
 const SHEET_APPEAR_SPRING_CONFIG = {
   damping: 20,
@@ -312,9 +314,7 @@ const BottomSheetContent = () => {
   const handleCopilotFollowUp = (message: string) => {
     if (followUpContext && message.trim().length > 0) {
       copilotAbortRef.current?.abort();
-      const promise = dispatch(
-        sendCopilotFollowUp({ followUpContext, message, conversationId }),
-      );
+      const promise = dispatch(sendCopilotFollowUp({ followUpContext, message, conversationId }));
       copilotAbortRef.current = promise;
       promise.unwrap().catch((err: { name?: string }) => {
         if (err?.name === 'AbortError') return;
@@ -499,6 +499,11 @@ const BottomSheetContent = () => {
     setAddMenuOptionSheetState(false);
   };
 
+  const onPressCameraIcon = () => {
+    setAddMenuOptionSheetState(false);
+    handleLaunchCamera(dispatch);
+  };
+
   const shouldShowCannedResponses = messageContent?.charAt(0) === '/';
 
   return (
@@ -513,7 +518,9 @@ const BottomSheetContent = () => {
       )}
 
       <Animated.View
-        layout={isCopilotActive ? undefined : LinearTransition.springify().damping(38).stiffness(240)}
+        layout={
+          isCopilotActive ? undefined : LinearTransition.springify().damping(38).stiffness(240)
+        }
         style={tailwind.style(
           `pb-2 border-t-[1px] border-t-blackA-A3 ${shouldShowReplyHeader ? 'pt-0' : 'pt-2'}`,
         )}>
@@ -551,7 +558,9 @@ const BottomSheetContent = () => {
         ) : null}
         {!isVoiceRecorderOpen ? (
           <Animated.View
-            layout={isCopilotActive ? undefined : LinearTransition.springify().damping(20).stiffness(180)}
+            layout={
+              isCopilotActive ? undefined : LinearTransition.springify().damping(20).stiffness(180)
+            }
             style={tailwind.style('flex flex-row px-1 items-end z-20 relative')}>
             {!isCopilotActive && attachmentsLength === 0 && shouldShowFileUpload && (
               <AddCommandButton
@@ -591,7 +600,10 @@ const BottomSheetContent = () => {
                   <SendMessageButton onPress={() => confirmOnSendReply(null)} />
                 )}
                 {messageContent.length === 0 && attachmentsLength === 0 && shouldShowFileUpload ? (
-                  <VoiceRecordButton onPress={onPressVoiceRecordIcon} />
+                  <>
+                    <CameraCommandButton onPress={onPressCameraIcon} />
+                    <VoiceRecordButton onPress={onPressVoiceRecordIcon} />
+                  </>
                 ) : null}
               </>
             )}

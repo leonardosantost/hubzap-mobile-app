@@ -6,7 +6,8 @@ import type {
   ContactConversationAPIResponse,
   ContactConversationPayload,
 } from './contactTypes';
-import { transformConversation } from '@/utils/camelCaseKeys';
+import { transformContact, transformConversation } from '@/utils/camelCaseKeys';
+import { Contact } from '@/types';
 
 export class ContactService {
   static async getContactLabels(payload: ContactLabelsPayload) {
@@ -37,5 +38,16 @@ export class ContactService {
     return {
       payload: transformedResponse,
     };
+  }
+
+  static async updateContact(
+    contactId: number,
+    payload: Record<string, unknown>,
+  ): Promise<Contact> {
+    const response = await apiService.put<{ payload?: Contact; data?: Contact }>(
+      `contacts/${contactId}`,
+      payload,
+    );
+    return transformContact(response.data.payload || response.data.data || response.data);
   }
 }

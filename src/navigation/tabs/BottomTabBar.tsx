@@ -10,14 +10,16 @@ import { BlurView, BlurViewProps } from '@react-native-community/blur';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { RouteProp } from '@react-navigation/native';
 import { selectCurrentState } from '@/store/conversation/conversationHeaderSlice';
+import { selectAllConversations } from '@/store/conversation/conversationSelectors';
+import { selectNotificationsMetadata } from '@/store/notification/notificationSelectors';
 
 import {
   ConversationIconFilled,
   ConversationIconOutline,
-  InboxIconFilled,
-  InboxIconOutline,
   SettingsIconFilled,
   SettingsIconOutline,
+  TasksIconFilled,
+  TasksIconOutline,
 } from '@/svg-icons';
 import { tailwind } from '@/theme';
 import { useHaptic, useScaleAnimation, useTabBarHeight } from '@/utils';
@@ -40,9 +42,52 @@ const TabBarIcons = ({ focused, route }: TabBarIconsProps) => {
     case 'Conversations':
       return focused ? <ConversationIconFilled /> : <ConversationIconOutline />;
     case 'Inbox':
-      return focused ? <InboxIconFilled /> : <InboxIconOutline />;
+      return focused ? <TasksIconFilled /> : <TasksIconOutline />;
     case 'Settings':
       return focused ? <SettingsIconFilled /> : <SettingsIconOutline />;
+  }
+};
+
+const formatBadgeCount = (count: number) => {
+  if (count > 99) {
+    return '99+';
+  }
+
+  return String(count);
+};
+
+const TabBadge = ({ count }: { count: number }) => {
+  if (count <= 0) {
+    return null;
+  }
+
+  return (
+    <Animated.View
+      style={tailwind.style(
+        'absolute -right-2 top-0 z-10 min-w-[17px] items-center justify-center rounded-full bg-blue-800 px-1',
+        count > 9 ? 'h-[17px]' : 'h-[17px] w-[17px]',
+      )}>
+      <Animated.Text
+        numberOfLines={1}
+        style={tailwind.style(
+          'text-[10px] font-inter-medium-24 leading-[12px] tracking-[0px] text-white',
+        )}>
+        {formatBadgeCount(count)}
+      </Animated.Text>
+    </Animated.View>
+  );
+};
+
+const getTabLabel = (routeName: keyof TabParamList) => {
+  switch (routeName) {
+    case 'Inbox':
+      return 'Tarefas';
+    case 'Conversations':
+      return 'Conversas';
+    case 'Settings':
+      return 'Ajustes';
+    default:
+      return '';
   }
 };
 
@@ -84,7 +129,7 @@ const TabBarBackground = (props: TabBarBackgroundProps) => {
 const TabItem = (props: any) => {
   const { handlers, animatedStyle } = useScaleAnimation();
 
-  const { onPress, onLongPress, isFocused, options, route } = props;
+  const { onPress, onLongPress, isFocused, options, route, badgeCount } = props;
 
   // Memoize hitSlop to prevent new object reference on every render
   const hitSlop = React.useMemo(() => ({ top: 2, left: 10, right: 10, bottom: 10 }), []);
@@ -106,7 +151,22 @@ const TabItem = (props: any) => {
         testID={options.tabBarTestID}
         onPress={onPress}
         onLongPress={onLongPress}>
-        <TabBarIcons focused={isFocused} route={route} />
+        <Animated.View style={tailwind.style('items-center justify-center')}>
+          <Animated.View style={tailwind.style('h-[34px] items-center justify-center')}>
+            <TabBadge count={badgeCount || 0} />
+            <Animated.View style={{ transform: [{ scale: 0.78 }] }}>
+              <TabBarIcons focused={isFocused} route={route} />
+            </Animated.View>
+          </Animated.View>
+          <Animated.Text
+            numberOfLines={1}
+            style={tailwind.style(
+              'mt-[-2px] text-cxs font-inter-medium-24 leading-[14px]',
+              isFocused ? 'text-gray-950' : 'text-gray-700',
+            )}>
+            {getTabLabel(route.name)}
+          </Animated.Text>
+        </Animated.View>
       </Pressable>
     </Animated.View>
   );
@@ -115,6 +175,28 @@ const TabItem = (props: any) => {
 export const BottomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const hapticSelection = useHaptic();
   const tabBarHeight = useTabBarHeight();
+  const conversations = useAppSelector(selectAllConversations);
+  const { unreadCount: unreadNotificationCount } = useAppSelector(selectNotificationsMetadata);
+
+  const unreadConversationCount = React.useMemo(
+    () => conversations.reduce((total, conversation) => total + (conversation.unreadCount || 0), 0),
+    [conversations],
+  );
+
+  const getBadgeCount = React.useCallback(
+    (routeName: string) => {
+      if (routeName === 'Inbox') {
+        return unreadNotificationCount;
+      }
+
+      if (routeName === 'Conversations') {
+        return unreadConversationCount;
+      }
+
+      return 0;
+    },
+    [unreadConversationCount, unreadNotificationCount],
+  );
 
   // Memoize press handlers using useCallback
   const createPressHandler = React.useCallback(
@@ -149,39 +231,46 @@ export const BottomTabBar = ({ state, descriptors, navigation }: BottomTabBarPro
   );
 
   return (
-    <TabBarBackground
-      blurAmount={25}
-      blurType="light"
-      style={Platform.select({
-        ios: [
+    <Animated.View
+      pointerEvents="box-none"
+      style={tailwind.style(
+        'absolute bottom-0 w-full px-4 pt-1',
+        Platform.OS === 'ios' ? 'pb-5' : 'pb-3',
+        `h-[${tabBarHeight}px]`,
+      )}>
+      <TabBarBackground
+        blurAmount={28}
+        blurType="light"
+        style={[
           tailwind.style(
-            'flex flex-row absolute w-full bottom-0 pl-[72px] pr-[71px] pt-[11px] pb-8 bg-[#00000009]',
-            `h-[${tabBarHeight}px]`,
+            'flex-1 flex-row overflow-hidden rounded-[30px] border-[1px] border-blackA-A3 px-2',
+            Platform.OS === 'ios' ? 'bg-[#FFFFFFD9]' : 'bg-white',
           ),
-        ],
-        android: [
-          tailwind.style(
-            'flex flex-row absolute w-full bottom-0 pl-[72px] pr-[71px] py-[11px] bg-white',
-            `h-[${tabBarHeight}px]`,
-          ),
-        ],
-      })}>
-      <Animated.View style={tailwind.style('absolute inset-0 h-[1px] bg-blackA-A3')} />
-      {state.routes.map((route, index) => {
-        const { options } = descriptors[route.key];
-        const isFocused = state.index === index;
+          {
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.13,
+            shadowRadius: 18,
+            elevation: 10,
+          },
+        ]}>
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const isFocused = state.index === index;
 
-        return (
-          <TabItem
-            key={route.key}
-            options={options}
-            onPress={createPressHandler(route, isFocused)}
-            onLongPress={createLongPressHandler(route)}
-            route={route}
-            isFocused={isFocused}
-          />
-        );
-      })}
-    </TabBarBackground>
+          return (
+            <TabItem
+              key={route.key}
+              options={options}
+              onPress={createPressHandler(route, isFocused)}
+              onLongPress={createLongPressHandler(route)}
+              route={route}
+              isFocused={isFocused}
+              badgeCount={getBadgeCount(route.name)}
+            />
+          );
+        })}
+      </TabBarBackground>
+    </Animated.View>
   );
 };

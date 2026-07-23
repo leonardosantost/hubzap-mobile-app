@@ -23,8 +23,8 @@
   },
   "LOGIN": {
     "TITLE": "Acesse sua conta",
-    "DESCRIPTION": "Você está conectado a {{baseUrl}}.",
-    "EMAIL": "e-mail",
+    "DESCRIPTION": "Entre com suas credenciais para acessar o HubZap.",
+    "EMAIL": "E-mail",
     "PASSWORD": "Senha",
     "EMAIL_REQUIRED": "E-mail é obrigatório",
     "EMAIL_ERROR": "Digite um e-mail válido",
@@ -32,6 +32,12 @@
     "PASSWORD_ERROR": "Digite uma senha válida",
     "LOGIN": "Entrar",
     "LOGIN_LOADING": "Entrar...",
+    "OR": "ou",
+    "CONTINUE_WITH_APPLE": "Continuar com Apple",
+    "CONTINUE_WITH_GOOGLE": "Continuar com Google",
+    "CONTINUE_WITH_WHATSAPP": "Logar com WhatsApp",
+    "TERMS_PREFIX": "Ao continuar você concorda com os",
+    "TERMS_OF_USE": "Termos de uso",
     "FORGOT_PASSWORD": "Esqueceu sua senha?",
     "RESET_HERE": "Redefinir aqui",
     "NO_ACCOUNT": "Não possui uma conta?",
@@ -168,6 +174,7 @@
     "PRIORITY_CHANGE": "Prioridade da conversa alterada",
     "PARTICIPANT_CHANGE": "Participante da conversa alterado",
     "CHANGE_STATUS": "Alterar situação",
+    "SEARCH_PLACEHOLDER": "Pesquisar conversas",
     "SEARCH_TEAM": "Pesquisar times",
     "PRIORITY": {
       "TITLE": "Prioridade",
@@ -481,5 +488,22 @@
     "EXECUTION_SUCCESS": "Macro executada com sucesso",
     "EXECUTION_ERROR": "Falha ao executar macro",
     "NO_MACROS": "Nenhuma macro encontrada"
+  },
+  "SEARCH": {
+    "PLACEHOLDER": "Digite 2 ou mais caracteres para pesquisar",
+    "HINT": "Pesquise por ID da conversa, e-mail, telefone ou mensagens para melhores resultados.",
+    "ALL_RESULTS": "Todos os resultados",
+    "RECENT_SEARCHES": "Pesquisas recentes",
+    "CLEAR_ALL": "Limpar tudo",
+    "VIEW_MORE": "Ver mais",
+    "TAP_TO_RETRY": "Toque para tentar novamente",
+    "NO_RESULTS": "Nenhum {{sectionLabel}} encontrado para '{{searchQuery}}'",
+    "ERROR_CANCELLED": "Não foi possível carregar os resultados.",
+    "ERROR_GENERIC": "Algo deu errado. Tente novamente.",
+    "SECTIONS": {
+      "CONTACTS": "Contatos",
+      "CONVERSATIONS": "Conversas",
+      "MESSAGES": "Mensagens"
+    }
   }
 }

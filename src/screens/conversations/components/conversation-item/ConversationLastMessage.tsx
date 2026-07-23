@@ -8,7 +8,7 @@ import {
   ImageAttachmentIcon,
   DocumentAttachmentIcon,
   PrivateNoteIcon,
-  OutgoingIcon,
+  DoubleCheckIcon,
 } from '@/svg-icons';
 import { Icon } from '@/components-next';
 import { Message } from '@/types';
@@ -53,7 +53,9 @@ const MessageType = ({ message, style }: { message: Message; style?: StyleProp<V
         {isPrivate ? (
           <Icon icon={<PrivateNoteIcon />} />
         ) : (
-          isOutgoing && <Icon icon={<OutgoingIcon />} />
+          isOutgoing && (
+            <Icon icon={<DoubleCheckIcon stroke={tailwind.color('text-gray-700')} />} size={16} />
+          )
         )}
       </NativeView>
     );
