@@ -5,6 +5,7 @@ import {
   BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   NativeScrollEvent,
@@ -17,8 +18,10 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { AxiosError } from 'axios';
 
 import {
   Avatar,
@@ -43,12 +46,18 @@ import {
 } from '@/svg-icons';
 import { PointOfSaleService } from '@/store/point-of-sale/pointOfSaleService';
 import type { ProductCatalogProduct } from '@/store/point-of-sale/pointOfSaleService';
+import {
+  MercadoPagoPaymentResponse,
+  MercadoPagoService,
+} from '@/store/mercado-pago/mercadoPagoService';
 import { TaskService } from '@/store/task/taskService';
 import { conversationActions } from '@/store/conversation/conversationActions';
 import { selectUserId, selectUserThumbnail } from '@/store/auth/authSelectors';
 import { useAppDispatch, useAppSelector } from '@/hooks';
 import { tailwind } from '@/theme';
 import type { Contact } from '@/types';
+import { openURL } from '@/utils/urlUtils';
+import { showToast } from '@/utils/toastUtils';
 import { useTabBarHeight } from '@/utils';
 
 type PointOfSaleView = 'metrics' | 'checkout' | 'orders' | 'settings';
@@ -77,6 +86,10 @@ type PaymentMethod = {
   id: string;
   title: string;
   enabled: boolean;
+};
+
+type PaymentCharge = MercadoPagoPaymentResponse & {
+  kind: 'pix' | 'payment_link';
 };
 
 type CartItem = {
@@ -118,7 +131,7 @@ const defaultPaymentMethods: PaymentMethod[] = [
   { id: 'pix', title: 'Pix', enabled: true },
   { id: 'credit_card', title: 'Cartão', enabled: true },
   { id: 'cash', title: 'Dinheiro', enabled: true },
-  { id: 'payment_link', title: 'Link de pagamento', enabled: false },
+  { id: 'payment_link', title: 'Link de pagamento', enabled: true },
 ];
 
 const formatCurrency = (valueInCents: number) =>
@@ -167,6 +180,7 @@ const buildOrderSummaryMessage = ({
   shippingCents,
   finalTotalCents,
   notes,
+  paymentCharge,
 }: {
   cartItems: CartItem[];
   paymentMethod: PaymentMethod;
@@ -175,6 +189,7 @@ const buildOrderSummaryMessage = ({
   shippingCents: number;
   finalTotalCents: number;
   notes: string;
+  paymentCharge?: PaymentCharge | null;
 }) => {
   const itemLines = cartItems.map(item => {
     const itemTotalCents = priceToCents(item.product.price) * item.quantity;
@@ -191,6 +206,10 @@ const buildOrderSummaryMessage = ({
     shippingCents > 0 ? `Frete: ${formatCurrency(shippingCents)}` : null,
     `Forma de pagamento: ${paymentMethod.title}`,
     `Total: ${formatCurrency(finalTotalCents)}`,
+    paymentCharge?.checkout_url ? '' : null,
+    paymentCharge?.checkout_url ? `Link de pagamento: ${paymentCharge.checkout_url}` : null,
+    paymentCharge?.qr_code ? '' : null,
+    paymentCharge?.qr_code ? `Pix copia e cola: ${paymentCharge.qr_code}` : null,
     notes.trim() ? '' : null,
     notes.trim() ? `Observações: ${notes.trim()}` : null,
   ]
@@ -583,6 +602,8 @@ const SaleSummaryView = ({
   const [shipping, setShipping] = useState('');
   const [notes, setNotes] = useState('');
   const [isSendingSummary, setIsSendingSummary] = useState(false);
+  const [isGeneratingCharge, setIsGeneratingCharge] = useState(false);
+  const [paymentCharge, setPaymentCharge] = useState<PaymentCharge | null>(null);
 
   useEffect(() => {
     const query = contactSearch.trim();
@@ -614,6 +635,7 @@ const SaleSummaryView = ({
     shippingCents,
     finalTotalCents,
     notes,
+    paymentCharge,
   });
 
   const selectContact = (contact: Contact) => {
@@ -631,6 +653,51 @@ const SaleSummaryView = ({
     } finally {
       setIsSendingSummary(false);
     }
+  };
+
+  const canGenerateMercadoPagoCharge =
+    paymentMethod.id === 'pix' || paymentMethod.id === 'payment_link';
+
+  const handleGenerateChargePress = async () => {
+    if (!canGenerateMercadoPagoCharge || isGeneratingCharge) return;
+
+    setIsGeneratingCharge(true);
+    try {
+      const charge = await MercadoPagoService.createPayment({
+        kind: paymentMethod.id === 'pix' ? 'pix' : 'payment_link',
+        amount_cents: finalTotalCents,
+        description: `Pedido ${formatCurrency(finalTotalCents)}`,
+        contact_id: selectedContact?.id || context?.contactId,
+        contact_name: contactSearch.trim() || defaultContactName,
+        contact_email: selectedContact?.email || undefined,
+        conversation_id: context?.conversationId,
+        notes,
+        items: cartItems.map(item => ({
+          id: item.product.id,
+          title: item.customName || item.product.name,
+          quantity: item.quantity,
+          unit_price_cents: priceToCents(item.product.price),
+        })),
+      });
+      setPaymentCharge({ ...charge, kind: paymentMethod.id === 'pix' ? 'pix' : 'payment_link' });
+      showToast({ message: paymentMethod.id === 'pix' ? 'Pix gerado.' : 'Link gerado.' });
+    } catch (error) {
+      const serverError = ((error as AxiosError).response?.data as { error?: string })?.error;
+      Alert.alert(
+        'Falha ao gerar cobrança',
+        serverError || 'Verifique se o Mercado Pago está conectado nas integrações.',
+      );
+    } finally {
+      setIsGeneratingCharge(false);
+    }
+  };
+
+  const copyChargeValue = () => {
+    const value = paymentCharge?.checkout_url || paymentCharge?.qr_code;
+    if (!value) return;
+
+    Clipboard.setString(value);
+    showToast({ message: 'Copiado.' });
   };
 
   return (
@@ -796,6 +863,73 @@ const SaleSummaryView = ({
             <SummaryValueRow title="Total" value={formatCurrency(finalTotalCents)} tone="total" />
           </View>
         </View>
+
+        {canGenerateMercadoPagoCharge ? (
+          <View
+            style={tailwind.style(
+              'mx-4 mt-3 rounded-[8px] border border-blue-100 bg-blue-50 px-4 py-3',
+            )}>
+            <View style={tailwind.style('flex-row items-center justify-between')}>
+              <View style={tailwind.style('flex-1 pr-3')}>
+                <Text style={tailwind.style('text-sm font-inter-semibold-24 text-blue-950')}>
+                  {paymentMethod.id === 'pix' ? 'Cobrança Pix' : 'Link de pagamento'}
+                </Text>
+                <Text style={tailwind.style('pt-0.5 text-xs font-inter-normal-20 text-blue-900')}>
+                  {paymentCharge
+                    ? 'Pronto para copiar ou enviar ao cliente.'
+                    : 'Gerado com a conta Mercado Pago conectada.'}
+                </Text>
+              </View>
+              <Pressable
+                onPress={handleGenerateChargePress}
+                disabled={isGeneratingCharge}
+                style={tailwind.style(
+                  'h-9 items-center justify-center rounded-[8px] bg-blue-800 px-3',
+                  isGeneratingCharge ? 'opacity-80' : '',
+                )}>
+                {isGeneratingCharge ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={tailwind.style('text-xs font-inter-semibold-24 text-white')}>
+                    {paymentCharge ? 'Gerar novo' : 'Gerar'}
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+
+            {paymentCharge ? (
+              <View style={tailwind.style('mt-3 rounded-[8px] bg-white px-3 py-3')}>
+                <Text
+                  numberOfLines={paymentCharge.checkout_url ? 2 : 3}
+                  style={tailwind.style('text-xs font-inter-normal-20 text-gray-800')}>
+                  {paymentCharge.checkout_url || paymentCharge.qr_code}
+                </Text>
+                <View style={tailwind.style('mt-3 flex-row gap-2')}>
+                  <Pressable
+                    onPress={copyChargeValue}
+                    style={tailwind.style(
+                      'h-9 flex-1 items-center justify-center rounded-[8px] border border-blue-800 bg-white',
+                    )}>
+                    <Text style={tailwind.style('text-xs font-inter-semibold-24 text-blue-800')}>
+                      Copiar
+                    </Text>
+                  </Pressable>
+                  {paymentCharge.checkout_url ? (
+                    <Pressable
+                      onPress={() => openURL({ URL: paymentCharge.checkout_url || '' })}
+                      style={tailwind.style(
+                        'h-9 flex-1 items-center justify-center rounded-[8px] bg-blue-800',
+                      )}>
+                      <Text style={tailwind.style('text-xs font-inter-semibold-24 text-white')}>
+                        Abrir
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
       </ScrollView>
 
       <View
@@ -1647,7 +1781,7 @@ const SettingsView = () => {
     { id: 'pix', title: 'Pix', enabled: true },
     { id: 'credit_card', title: 'Cartão', enabled: true },
     { id: 'cash', title: 'Dinheiro', enabled: true },
-    { id: 'payment_link', title: 'Link de pagamento', enabled: false },
+    { id: 'payment_link', title: 'Link de pagamento', enabled: true },
   ]);
 
   const togglePaymentMethod = (methodId: string) => {

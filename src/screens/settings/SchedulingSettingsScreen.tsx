@@ -12,12 +12,14 @@ import {
   selectSchedulingBusinessDays,
   selectSchedulingEndHour,
   selectSchedulingEnabled,
+  selectSchedulingShowOverdueOnNextDay,
   selectSchedulingStartHour,
 } from '@/store/app-features/appFeaturesSelectors';
 import {
   setSchedulingAgentIds,
   setSchedulingEnabled,
   setSchedulingHours,
+  setSchedulingShowOverdueOnNextDay,
   toggleSchedulingAgent,
   toggleSchedulingBusinessDay,
 } from '@/store/app-features/appFeaturesSlice';
@@ -96,6 +98,7 @@ const SchedulingSettingsScreen = () => {
   const businessDays = useAppSelector(selectSchedulingBusinessDays);
   const startHour = useAppSelector(selectSchedulingStartHour);
   const endHour = useAppSelector(selectSchedulingEndHour);
+  const showOverdueOnNextDay = useAppSelector(selectSchedulingShowOverdueOnNextDay);
   const agents = useAppSelector(selectTaskAgents);
 
   useEffect(() => {
@@ -133,6 +136,26 @@ const SchedulingSettingsScreen = () => {
             value={enabled}
             onValueChange={value => {
               dispatch(setSchedulingEnabled(value));
+            }}
+          />
+        </Animated.View>
+
+        <Animated.View
+          style={tailwind.style(
+            'mx-4 mt-2 flex-row items-center justify-between rounded-[8px] border border-blackA-A3 px-3 py-3',
+          )}>
+          <Animated.View style={tailwind.style('flex-1 pr-3')}>
+            <Animated.Text style={tailwind.style('text-base font-inter-medium-24 text-gray-950')}>
+              Mostrar atrasadas no próximo dia
+            </Animated.Text>
+            <Animated.Text style={tailwind.style('pt-0.5 text-sm text-gray-700')}>
+              Mantém pendências vencidas no início do dia atual com aviso de atraso.
+            </Animated.Text>
+          </Animated.View>
+          <Switch
+            value={showOverdueOnNextDay}
+            onValueChange={value => {
+              dispatch(setSchedulingShowOverdueOnNextDay(value));
             }}
           />
         </Animated.View>

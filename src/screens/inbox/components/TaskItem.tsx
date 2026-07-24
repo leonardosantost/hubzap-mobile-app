@@ -19,12 +19,20 @@ type TaskItemProps = {
 };
 
 const timeFormatter = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' });
+const overdueFormatter = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+});
 
 export const TaskItem = ({ task, onComplete, onPress }: TaskItemProps) => {
   const contactName = task.contact?.name || task.conversation?.contactName;
   const title = task.title || contactName || 'Follow-up';
   const description = task.description || task.note;
   const isCompleted = task.status === 'completed';
+  const dueAt = new Date(task.dueAt);
+  const isOverdue = !isCompleted && dueAt < new Date();
   const haptic = useHaptic('light');
   const [optimisticCompleted, setOptimisticCompleted] = useState(isCompleted);
   const checkboxScale = useSharedValue(isCompleted ? 1 : 0);
@@ -67,7 +75,10 @@ export const TaskItem = ({ task, onComplete, onPress }: TaskItemProps) => {
     <Pressable onPress={onPress} style={tailwind.style('px-4 py-3')}>
       <Animated.View
         style={[
-          tailwind.style('border-[1px] border-blackA-A3 rounded-lg bg-white px-3 py-3'),
+          tailwind.style(
+            'border-[1px] rounded-lg bg-white px-3 py-3',
+            isOverdue && !optimisticCompleted ? 'border-red-500' : 'border-blackA-A3',
+          ),
           itemStyle,
         ]}>
         <Animated.View style={tailwind.style('flex-row items-start')}>
@@ -120,9 +131,11 @@ export const TaskItem = ({ task, onComplete, onPress }: TaskItemProps) => {
           <Animated.Text
             style={tailwind.style(
               'text-sm font-inter-medium-24',
-              optimisticCompleted ? 'text-gray-500' : 'text-gray-700',
+              optimisticCompleted ? 'text-gray-500' : isOverdue ? 'text-red-700' : 'text-gray-700',
             )}>
-            {timeFormatter.format(new Date(task.dueAt))}
+            {isOverdue
+              ? `Atrasada desde ${overdueFormatter.format(dueAt)}`
+              : timeFormatter.format(dueAt)}
           </Animated.Text>
         </Animated.View>
       </Animated.View>

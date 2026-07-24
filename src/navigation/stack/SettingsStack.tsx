@@ -6,6 +6,7 @@ import ApplicationsScreen from '@/screens/settings/ApplicationsScreen';
 import IntegrationsScreen from '@/screens/settings/IntegrationsScreen';
 import EvolutionConnectionsScreen from '@/screens/settings/EvolutionConnectionsScreen';
 import EvolutionConnectionScreen from '@/screens/settings/EvolutionConnectionScreen';
+import MercadoPagoConnectionScreen from '@/screens/settings/MercadoPagoConnectionScreen';
 import AutomationsScreen from '@/screens/settings/AutomationsScreen';
 import AutomationNewScreen from '@/screens/settings/AutomationNewScreen';
 import AutomationEditorScreen from '@/screens/settings/AutomationEditorScreen';
@@ -24,6 +25,7 @@ export type SettingsStackParamList = {
   IntegrationsScreen: undefined;
   EvolutionConnectionsScreen: undefined;
   EvolutionConnectionScreen: { inboxId?: number; mode?: 'create' } | undefined;
+  MercadoPagoConnectionScreen: undefined;
   AutomationsScreen: undefined;
   AutomationNewScreen: undefined;
   AutomationEditorScreen: { templateKey?: string; automationId?: number } | undefined;
@@ -64,6 +66,11 @@ export const SettingsStack = () => {
         options={{ headerShown: false, animation: 'slide_from_right' }}
         name="EvolutionConnectionScreen"
         component={EvolutionConnectionScreen}
+      />
+      <Stack.Screen
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+        name="MercadoPagoConnectionScreen"
+        component={MercadoPagoConnectionScreen}
       />
       <Stack.Screen
         options={{ headerShown: false, animation: 'slide_from_right' }}

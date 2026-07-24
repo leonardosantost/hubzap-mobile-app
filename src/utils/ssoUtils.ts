@@ -25,7 +25,7 @@ export class SsoUtils {
     try {
       // Create redirect URI with custom scheme
       const redirectUri = AuthSession.makeRedirectUri({
-        scheme: 'chatwootapp',
+        scheme: 'jootaapp',
         path: 'sso/callback',
       });
 
@@ -99,7 +99,7 @@ export class SsoUtils {
    */
   static parseCallbackUrl(url: string): SsoLoginParams {
     try {
-      //  The URL will be in the format chatwootapp://auth/saml?email=<email>&sso_auth_token=<auth_token>&error=<error>
+      //  The URL will be in the format jootaapp://auth/saml?email=<email>&sso_auth_token=<auth_token>&error=<error>
       const urlObj = new URL(url);
       const params: SsoLoginParams = {};
 

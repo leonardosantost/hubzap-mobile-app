@@ -22,6 +22,7 @@ import { selectTaskAgents, selectTasks, selectTasksLoading } from '@/store/task/
 import {
   selectSchedulingAgentIds,
   selectSchedulingEnabled,
+  selectSchedulingShowOverdueOnNextDay,
 } from '@/store/app-features/appFeaturesSelectors';
 import { showToast } from '@/utils/toastUtils';
 import { InboxHeader, TaskFormSheet, TaskItem, WeeklyPlanner } from './components';
@@ -30,6 +31,14 @@ const sameDay = (first: Date, second: Date) =>
   first.getFullYear() === second.getFullYear() &&
   first.getMonth() === second.getMonth() &&
   first.getDate() === second.getDate();
+
+const startOfDay = (date: Date) => {
+  const nextDate = new Date(date);
+  nextDate.setHours(0, 0, 0, 0);
+  return nextDate;
+};
+
+const isToday = (date: Date) => sameDay(date, new Date());
 
 const addDays = (date: Date, days: number) => {
   const nextDate = new Date(date);
@@ -51,6 +60,7 @@ const InboxScreen = () => {
   const isLoading = useAppSelector(selectTasksLoading);
   const schedulingEnabled = useAppSelector(selectSchedulingEnabled);
   const schedulingAgentIds = useAppSelector(selectSchedulingAgentIds);
+  const showOverdueOnNextDay = useAppSelector(selectSchedulingShowOverdueOnNextDay);
   const visibleAgents = useMemo(() => {
     if (!schedulingEnabled || schedulingAgentIds.length === 0) return agents;
     return agents.filter(agent => schedulingAgentIds.includes(agent.id));
@@ -58,8 +68,13 @@ const InboxScreen = () => {
   const selectedAgent = visibleAgents.find(agent => agent.id === selectedAgentId);
 
   const fetchTasks = useCallback(() => {
+    const offsets =
+      showOverdueOnNextDay && isToday(selectedDate)
+        ? Array.from({ length: 9 }, (_, index) => index - 7)
+        : [-1, 0, 1];
+
     return Promise.all(
-      [-1, 0, 1].map(dayOffset =>
+      offsets.map(dayOffset =>
         dispatch(
           taskActions.fetchTasks({
             date: addDays(selectedDate, dayOffset),
@@ -69,7 +84,7 @@ const InboxScreen = () => {
         ),
       ),
     );
-  }, [dispatch, schedulingEnabled, selectedAgentId, selectedDate]);
+  }, [dispatch, schedulingEnabled, selectedAgentId, selectedDate, showOverdueOnNextDay]);
 
   useEffect(() => {
     fetchTasks();
@@ -85,18 +100,32 @@ const InboxScreen = () => {
     setSelectedAgentId(undefined);
   }, [selectedAgentId, visibleAgents]);
 
-  const tasksForSelectedDate = useMemo(
-    () =>
-      tasks
-        .filter(task => sameDay(new Date(task.dueAt), selectedDate))
-        .sort((first, second) => {
-          if (first.status !== second.status) {
-            return first.status === 'completed' ? 1 : -1;
-          }
-          return new Date(first.dueAt).getTime() - new Date(second.dueAt).getTime();
-        }),
-    [selectedDate, tasks],
-  );
+  const tasksForSelectedDate = useMemo(() => {
+    const now = new Date();
+    const selectedDayStart = startOfDay(selectedDate);
+    const shouldShowOverdue = showOverdueOnNextDay && isToday(selectedDate);
+
+    return tasks
+      .filter(task => {
+        const dueAt = new Date(task.dueAt);
+        if (sameDay(dueAt, selectedDate)) return true;
+        return shouldShowOverdue && task.status === 'pending' && dueAt < selectedDayStart;
+      })
+      .sort((first, second) => {
+        const firstDueAt = new Date(first.dueAt);
+        const secondDueAt = new Date(second.dueAt);
+        const firstIsOverdue = first.status === 'pending' && firstDueAt < now;
+        const secondIsOverdue = second.status === 'pending' && secondDueAt < now;
+
+        if (firstIsOverdue !== secondIsOverdue) {
+          return firstIsOverdue ? -1 : 1;
+        }
+        if (first.status !== second.status) {
+          return first.status === 'completed' ? 1 : -1;
+        }
+        return firstDueAt.getTime() - secondDueAt.getTime();
+      });
+  }, [selectedDate, showOverdueOnNextDay, tasks]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

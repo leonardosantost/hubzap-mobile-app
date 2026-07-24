@@ -8,7 +8,10 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { Button, Icon } from '@/components-next';
 import { TAB_BAR_HEIGHT } from '@/constants';
 import type { SettingsStackParamList } from '@/navigation/stack/SettingsStack';
-import { EvolutionApiService, EvolutionConnection } from '@/store/evolution-api/evolutionApiService';
+import {
+  EvolutionApiService,
+  EvolutionConnection,
+} from '@/store/evolution-api/evolutionApiService';
 import { ChevronLeft, WhatsAppIcon } from '@/svg-icons';
 import { tailwind } from '@/theme';
 import { showToast } from '@/utils/toastUtils';
@@ -26,7 +29,10 @@ const Header = () => {
             <Icon icon={<ChevronLeft stroke={tailwind.color('text-gray-950')} />} size={24} />
           </Pressable>
         </Animated.View>
-        <Animated.Text style={tailwind.style('flex-1 text-center text-[17px] font-inter-medium-24 text-gray-950')}>
+        <Animated.Text
+          style={tailwind.style(
+            'flex-1 text-center text-[17px] font-inter-medium-24 text-gray-950',
+          )}>
           WhatsApp Web
         </Animated.Text>
         <Animated.View style={tailwind.style('flex-1')} />
@@ -172,7 +178,7 @@ const EvolutionConnectionScreen = () => {
       const directory = FileSystem.cacheDirectory || FileSystem.documentDirectory;
       if (!directory) throw new Error('File system directory unavailable');
 
-      const fileUri = `${directory}hubzap-whatsapp-qr.png`;
+      const fileUri = `${directory}joota-whatsapp-qr.png`;
       await FileSystem.writeAsStringAsync(fileUri, qrBase64, {
         encoding: FileSystem.EncodingType.Base64,
       });
@@ -196,22 +202,35 @@ const EvolutionConnectionScreen = () => {
       ) : (
         <ScrollView contentContainerStyle={tailwind.style(`px-4 pb-[${TAB_BAR_HEIGHT + 28}px]`)}>
           <Animated.View style={tailwind.style('items-center pt-7')}>
-            <Animated.View style={tailwind.style('h-[64px] w-[64px] items-center justify-center rounded-[14px] bg-green-50')}>
+            <Animated.View
+              style={tailwind.style(
+                'h-[64px] w-[64px] items-center justify-center rounded-[14px] bg-green-50',
+              )}>
               <Icon icon={<WhatsAppIcon />} size={38} />
             </Animated.View>
-            <Animated.Text style={tailwind.style('pt-4 text-xl font-inter-medium-24 text-gray-950')}>
+            <Animated.Text
+              style={tailwind.style('pt-4 text-xl font-inter-medium-24 text-gray-950')}>
               {statusText(connection?.state)}
             </Animated.Text>
-            <Animated.Text style={tailwind.style('pt-1 text-center text-sm font-inter-normal-20 text-gray-700')}>
+            <Animated.Text
+              style={tailwind.style('pt-1 text-center text-sm font-inter-normal-20 text-gray-700')}>
               {connection?.number || connection?.profile_name || 'Crie a conexão e leia o QR Code.'}
             </Animated.Text>
           </Animated.View>
 
           {qrCode ? (
             <Animated.View style={tailwind.style('items-center pt-8')}>
-              <Image source={{ uri: qrCode }} resizeMode="contain" style={tailwind.style('h-[260px] w-[260px]')} />
-              <Animated.Text style={tailwind.style('px-3 pt-4 text-center text-sm font-inter-normal-20 text-gray-700')}>
-                Se o WhatsApp estiver neste mesmo celular, compartilhe o QR Code e abra em outro aparelho para escanear por Aparelhos conectados.
+              <Image
+                source={{ uri: qrCode }}
+                resizeMode="contain"
+                style={tailwind.style('h-[260px] w-[260px]')}
+              />
+              <Animated.Text
+                style={tailwind.style(
+                  'px-3 pt-4 text-center text-sm font-inter-normal-20 text-gray-700',
+                )}>
+                Se o WhatsApp estiver neste mesmo celular, compartilhe o QR Code e abra em outro
+                aparelho para escanear por Aparelhos conectados.
               </Animated.Text>
               <Animated.View style={tailwind.style('w-full pt-4')}>
                 <Button text="Compartilhar QR Code" variant="secondary" handlePress={shareQrCode} />
@@ -221,14 +240,31 @@ const EvolutionConnectionScreen = () => {
 
           <Animated.View style={tailwind.style('gap-3 pt-8')}>
             {isCreateMode && !connection ? (
-              <Button text={submitting ? 'Criando...' : 'Criar conexão'} handlePress={createConnection} disabled={submitting} />
+              <Button
+                text={submitting ? 'Criando...' : 'Criar conexão'}
+                handlePress={createConnection}
+                disabled={submitting}
+              />
             ) : connection?.state === 'open' ? (
-              <Button text="Reconectar" variant="secondary" handlePress={reconnect} disabled={submitting} />
+              <Button
+                text="Reconectar"
+                variant="secondary"
+                handlePress={reconnect}
+                disabled={submitting}
+              />
             ) : qrCode ? (
-              <Button text={submitting ? 'Conectando...' : 'Atualizar QR Code'} handlePress={connect} disabled={submitting} />
+              <Button
+                text={submitting ? 'Conectando...' : 'Atualizar QR Code'}
+                handlePress={connect}
+                disabled={submitting}
+              />
             ) : (
               <>
-                <Button text={submitting ? 'Conectando...' : 'Conectar'} handlePress={connect} disabled={submitting} />
+                <Button
+                  text={submitting ? 'Conectando...' : 'Conectar'}
+                  handlePress={connect}
+                  disabled={submitting}
+                />
               </>
             )}
             {connection?.inbox_id ? (
@@ -242,7 +278,8 @@ const EvolutionConnectionScreen = () => {
             ) : null}
           </Animated.View>
           {instanceSuffix(connection?.instance_name) ? (
-            <Animated.Text style={tailwind.style('pt-6 text-center text-xs font-inter-normal-20 text-gray-700')}>
+            <Animated.Text
+              style={tailwind.style('pt-6 text-center text-xs font-inter-normal-20 text-gray-700')}>
               ID da conexão: ...{instanceSuffix(connection?.instance_name)}
             </Animated.Text>
           ) : null}

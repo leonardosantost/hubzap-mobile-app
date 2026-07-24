@@ -6,6 +6,7 @@ type AppFeaturesState = {
   schedulingBusinessDays: number[];
   schedulingStartHour: number;
   schedulingEndHour: number;
+  schedulingShowOverdueOnNextDay?: boolean;
 };
 
 const initialState: AppFeaturesState = {
@@ -58,6 +59,10 @@ const appFeaturesSlice = createSlice({
       state.schedulingStartHour = action.payload.startHour;
       state.schedulingEndHour = action.payload.endHour;
     },
+    setSchedulingShowOverdueOnNextDay: (state, action: PayloadAction<boolean>) => {
+      ensureSchedulingState(state);
+      state.schedulingShowOverdueOnNextDay = action.payload;
+    },
   },
 });
 
@@ -65,6 +70,7 @@ export const {
   setSchedulingAgentIds,
   setSchedulingEnabled,
   setSchedulingHours,
+  setSchedulingShowOverdueOnNextDay,
   toggleSchedulingAgent,
   toggleSchedulingBusinessDay,
 } = appFeaturesSlice.actions;

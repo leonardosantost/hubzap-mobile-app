@@ -17,3 +17,6 @@ export const selectSchedulingStartHour = (state: RootState) =>
 
 export const selectSchedulingEndHour = (state: RootState) =>
   state.appFeatures?.schedulingEndHour ?? defaultSchedulingHours.endHour;
+
+export const selectSchedulingShowOverdueOnNextDay = (state: RootState) =>
+  state.appFeatures?.schedulingShowOverdueOnNextDay ?? !selectSchedulingEnabled(state);

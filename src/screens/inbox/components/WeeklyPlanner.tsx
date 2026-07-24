@@ -25,6 +25,15 @@ const timeLabel = (date: Date) =>
 const taskTitle = (task: ConversationTask) =>
   task.title || task.contact?.name || task.conversation?.contactName || 'Tarefa';
 
+const isTaskOverdue = (task: ConversationTask, now: Date) =>
+  task.status === 'pending' && new Date(task.dueAt) < now;
+
+const taskCardColor = (isCompleted: boolean, isOverdue: boolean) => {
+  if (isCompleted) return 'bg-green-700';
+  if (isOverdue) return 'bg-red-700';
+  return 'bg-blue-800';
+};
+
 type WeeklyPlannerProps = {
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
@@ -48,33 +57,34 @@ export const WeeklyPlanner = ({
   }, []);
   const dayWidth = Math.max((width - 40) / 3, 104);
 
-  const days = useMemo(
-    () =>
-      Array.from({ length: 21 }, (_, index) => {
-        const date = addDays(today, index - 10);
-        const dayTasks = tasks
-          .filter(task => isSameDay(new Date(task.dueAt), date))
-          .sort(
-            (first, second) => new Date(first.dueAt).getTime() - new Date(second.dueAt).getTime(),
-          );
-        const groupedTasks = Object.values(
-          dayTasks.reduce<Record<string, ConversationTask[]>>((groups, task) => {
-            const label = timeLabel(new Date(task.dueAt));
-            groups[label] = [...(groups[label] || []), task];
-            return groups;
-          }, {}),
-        ).slice(0, 3);
+  const days = useMemo(() => {
+    const now = new Date();
 
-        return {
-          date,
-          key: date.toISOString(),
-          label: WEEK_DAY_LABELS[date.getDay()],
-          dayNumber: date.getDate(),
-          groupedTasks,
-        };
-      }),
-    [tasks, today],
-  );
+    return Array.from({ length: 21 }, (_, index) => {
+      const date = addDays(today, index - 10);
+      const dayTasks = tasks
+        .filter(task => isSameDay(new Date(task.dueAt), date))
+        .sort(
+          (first, second) => new Date(first.dueAt).getTime() - new Date(second.dueAt).getTime(),
+        );
+      const groupedTasks = Object.values(
+        dayTasks.reduce<Record<string, ConversationTask[]>>((groups, task) => {
+          const label = timeLabel(new Date(task.dueAt));
+          groups[label] = [...(groups[label] || []), task];
+          return groups;
+        }, {}),
+      ).slice(0, 3);
+
+      return {
+        date,
+        key: date.toISOString(),
+        label: WEEK_DAY_LABELS[date.getDay()],
+        dayNumber: date.getDate(),
+        groupedTasks,
+        now,
+      };
+    });
+  }, [tasks, today]);
 
   return (
     <Animated.View style={tailwind.style('bg-white pt-3 pb-2')}>
@@ -125,6 +135,7 @@ export const WeeklyPlanner = ({
                   const groupKey = `${day.key}-${groupTime}`;
                   const isExpanded = expandedGroupKey === groupKey;
                   const isGroupCompleted = group.every(task => task.status === 'completed');
+                  const isGroupOverdue = group.some(task => isTaskOverdue(task, day.now));
 
                   return (
                     <View key={groupKey}>
@@ -138,7 +149,7 @@ export const WeeklyPlanner = ({
                         }}
                         style={tailwind.style(
                           'rounded-[6px] px-1.5 py-1',
-                          isGroupCompleted ? 'bg-green-700' : 'bg-blue-800',
+                          taskCardColor(isGroupCompleted, isGroupOverdue),
                         )}>
                         <View style={tailwind.style('flex-row items-start')}>
                           <View style={tailwind.style('flex-1 pr-1')}>
@@ -182,7 +193,10 @@ export const WeeklyPlanner = ({
                               onPress={() => onTaskPress(task)}
                               style={tailwind.style(
                                 'rounded-[6px] px-1.5 py-1',
-                                task.status === 'completed' ? 'bg-green-700' : 'bg-blue-800',
+                                taskCardColor(
+                                  task.status === 'completed',
+                                  isTaskOverdue(task, day.now),
+                                ),
                               )}>
                               <View style={tailwind.style('flex-row items-center')}>
                                 <Animated.Text

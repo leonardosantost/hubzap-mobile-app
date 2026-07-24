@@ -23,7 +23,7 @@
   },
   "LOGIN": {
     "TITLE": "Log in to your account",
-    "DESCRIPTION": "Enter your credentials to access HubZap.",
+    "DESCRIPTION": "Enter your credentials to access Joota.",
     "EMAIL": "Email",
     "PASSWORD": "Password",
     "EMAIL_REQUIRED": "Email is required",

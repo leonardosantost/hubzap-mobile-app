@@ -8,7 +8,8 @@ import { AxiosError } from 'axios';
 import { Icon } from '@/components-next/common';
 import { TAB_BAR_HEIGHT } from '@/constants';
 import { EvolutionApiService, EvolutionOverview } from '@/store/evolution-api/evolutionApiService';
-import { ChevronLeft, WhatsAppIcon } from '@/svg-icons';
+import { MercadoPagoOverview, MercadoPagoService } from '@/store/mercado-pago/mercadoPagoService';
+import { CartIcon, ChevronLeft, WhatsAppIcon } from '@/svg-icons';
 import { tailwind } from '@/theme';
 
 const Header = () => {
@@ -22,7 +23,10 @@ const Header = () => {
             <Icon icon={<ChevronLeft stroke={tailwind.color('text-gray-950')} />} size={24} />
           </Pressable>
         </Animated.View>
-        <Animated.Text style={tailwind.style('flex-1 text-center text-[17px] font-inter-medium-24 text-gray-950')}>
+        <Animated.Text
+          style={tailwind.style(
+            'flex-1 text-center text-[17px] font-inter-medium-24 text-gray-950',
+          )}>
           Integrações
         </Animated.Text>
         <Animated.View style={tailwind.style('flex-1')} />
@@ -38,9 +42,16 @@ const statusText = (state?: string) => {
   return 'Configurar';
 };
 
+const mercadoPagoStatusText = (overview: MercadoPagoOverview | null) => {
+  if (!overview?.configured) return 'Configurar';
+  if (overview.connected) return 'Conectado';
+  return 'Desconectado';
+};
+
 const IntegrationsScreen = () => {
   const navigation = useNavigation();
   const [overview, setOverview] = useState<EvolutionOverview | null>(null);
+  const [mercadoPagoOverview, setMercadoPagoOverview] = useState<MercadoPagoOverview | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,8 +59,22 @@ const IntegrationsScreen = () => {
   const load = useCallback(async () => {
     try {
       setLoadError(null);
-      const data = await EvolutionApiService.overview();
-      setOverview(data);
+      const [evolutionResult, mercadoPagoResult] = await Promise.allSettled([
+        EvolutionApiService.overview(),
+        MercadoPagoService.overview(),
+      ]);
+
+      if (evolutionResult.status === 'fulfilled') {
+        setOverview(evolutionResult.value);
+      } else {
+        throw evolutionResult.reason;
+      }
+
+      if (mercadoPagoResult.status === 'fulfilled') {
+        setMercadoPagoOverview(mercadoPagoResult.value);
+      } else {
+        setMercadoPagoOverview(null);
+      }
     } catch (error) {
       const status = (error as AxiosError).response?.status;
       const serverError = ((error as AxiosError).response?.data as { error?: string })?.error;
@@ -92,7 +117,8 @@ const IntegrationsScreen = () => {
               <Animated.Text style={tailwind.style('text-base font-inter-medium-24 text-gray-950')}>
                 Falha ao carregar integrações
               </Animated.Text>
-              <Animated.Text style={tailwind.style('pt-1 text-sm font-inter-normal-20 text-gray-700')}>
+              <Animated.Text
+                style={tailwind.style('pt-1 text-sm font-inter-normal-20 text-gray-700')}>
                 {loadError}
               </Animated.Text>
             </Animated.View>
@@ -103,7 +129,8 @@ const IntegrationsScreen = () => {
               <Animated.Text style={tailwind.style('text-base font-inter-medium-24 text-gray-950')}>
                 Evolution API não configurada
               </Animated.Text>
-              <Animated.Text style={tailwind.style('pt-1 text-sm font-inter-normal-20 text-gray-700')}>
+              <Animated.Text
+                style={tailwind.style('pt-1 text-sm font-inter-normal-20 text-gray-700')}>
                 Configure EVOLUTION_API_URL e EVOLUTION_API_KEY no backend.
               </Animated.Text>
             </Animated.View>
@@ -111,16 +138,23 @@ const IntegrationsScreen = () => {
 
           <Animated.View style={tailwind.style('pt-2')}>
             <Pressable
-              style={tailwind.style('mx-4 flex-row items-center border-b-[1px] border-b-blackA-A3 py-4')}
+              style={tailwind.style(
+                'mx-4 flex-row items-center border-b-[1px] border-b-blackA-A3 py-4',
+              )}
               onPress={() => navigation.dispatch(StackActions.push('EvolutionConnectionsScreen'))}>
-              <Animated.View style={tailwind.style('h-[46px] w-[46px] items-center justify-center rounded-[8px] bg-green-50')}>
+              <Animated.View
+                style={tailwind.style(
+                  'h-[46px] w-[46px] items-center justify-center rounded-[8px] bg-green-50',
+                )}>
                 <Icon icon={<WhatsAppIcon />} size={28} />
               </Animated.View>
               <Animated.View style={tailwind.style('ml-3 flex-1')}>
-                <Animated.Text style={tailwind.style('text-base font-inter-medium-24 text-gray-950')}>
+                <Animated.Text
+                  style={tailwind.style('text-base font-inter-medium-24 text-gray-950')}>
                   WhatsApp Web
                 </Animated.Text>
-                <Animated.Text style={tailwind.style('pt-0.5 text-sm font-inter-normal-20 text-gray-700')}>
+                <Animated.Text
+                  style={tailwind.style('pt-0.5 text-sm font-inter-normal-20 text-gray-700')}>
                   QR Code
                 </Animated.Text>
               </Animated.View>
@@ -128,22 +162,58 @@ const IntegrationsScreen = () => {
                 {statusText(whatsappState)}
               </Animated.Text>
             </Pressable>
+            <Pressable
+              style={tailwind.style(
+                'mx-4 flex-row items-center border-b-[1px] border-b-blackA-A3 py-4',
+              )}
+              onPress={() => navigation.dispatch(StackActions.push('MercadoPagoConnectionScreen'))}>
+              <Animated.View
+                style={tailwind.style(
+                  'h-[46px] w-[46px] items-center justify-center rounded-[8px] bg-[#E7F7FB]',
+                )}>
+                <Icon icon={<CartIcon stroke="#008AD6" />} size={24} />
+              </Animated.View>
+              <Animated.View style={tailwind.style('ml-3 flex-1')}>
+                <Animated.Text
+                  style={tailwind.style('text-base font-inter-medium-24 text-gray-950')}>
+                  Mercado Pago
+                </Animated.Text>
+                <Animated.Text
+                  style={tailwind.style('pt-0.5 text-sm font-inter-normal-20 text-gray-700')}>
+                  Pix e link de pagamento
+                </Animated.Text>
+              </Animated.View>
+              <Animated.Text style={tailwind.style('text-sm font-inter-medium-24 text-gray-700')}>
+                {mercadoPagoStatusText(mercadoPagoOverview)}
+              </Animated.Text>
+            </Pressable>
           </Animated.View>
 
-          <Animated.Text style={tailwind.style('px-4 pt-7 text-sm font-inter-medium-24 uppercase text-gray-700')}>
+          <Animated.Text
+            style={tailwind.style(
+              'px-4 pt-7 text-sm font-inter-medium-24 uppercase text-gray-700',
+            )}>
             Canais configurados
           </Animated.Text>
           {overview?.inboxes.map(inbox => (
             <Animated.View
               key={inbox.id}
-              style={tailwind.style('mx-4 min-h-[48px] flex-row items-center border-b-[1px] border-b-blackA-A3 py-2')}>
+              style={tailwind.style(
+                'mx-4 min-h-[48px] flex-row items-center border-b-[1px] border-b-blackA-A3 py-2',
+              )}>
               <Animated.View style={tailwind.style('flex-1 justify-center')}>
-                <Animated.Text style={tailwind.style('text-sm font-inter-normal-20 leading-[18px] text-gray-950')}>
+                <Animated.Text
+                  style={tailwind.style(
+                    'text-sm font-inter-normal-20 leading-[18px] text-gray-950',
+                  )}>
                   {inbox.name}
                 </Animated.Text>
               </Animated.View>
               <Animated.View style={tailwind.style('justify-center')}>
-                <Animated.Text style={tailwind.style('text-xs font-inter-normal-20 leading-[16px] text-gray-700')}>
+                <Animated.Text
+                  style={tailwind.style(
+                    'text-xs font-inter-normal-20 leading-[16px] text-gray-700',
+                  )}>
                   {inbox.provider === 'evolution_api' ? 'WhatsApp Web' : inbox.provider}
                 </Animated.Text>
               </Animated.View>

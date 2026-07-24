@@ -37,7 +37,11 @@ type AppItem = {
   iconSize?: number;
   description?: string;
   toggle?: 'scheduling' | 'team_chat';
-  route?: 'CatalogItemsScreen' | 'SchedulingSettingsScreen' | 'AutomationsScreen';
+  route?:
+    | 'CatalogItemsScreen'
+    | 'SchedulingSettingsScreen'
+    | 'AutomationsScreen'
+    | 'MercadoPagoConnectionScreen';
 };
 
 type AppSection = {
@@ -230,6 +234,8 @@ const sections: AppSection[] = [
         logoUri: 'https://logo.clearbit.com/mercadopago.com.br?size=256',
         backgroundColor: '#E7F7FB',
         iconSize: 50,
+        description: 'Pix e link de pagamento',
+        route: 'MercadoPagoConnectionScreen',
       },
       {
         name: 'Asaas',
