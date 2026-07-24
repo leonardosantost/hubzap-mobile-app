@@ -45,7 +45,12 @@ import {
   UserIcon,
 } from '@/svg-icons';
 import { PointOfSaleService } from '@/store/point-of-sale/pointOfSaleService';
-import type { ProductCatalogProduct } from '@/store/point-of-sale/pointOfSaleService';
+import type {
+  PosOrder,
+  PosOrderInput,
+  PosOrderPaymentStatus,
+  ProductCatalogProduct,
+} from '@/store/point-of-sale/pointOfSaleService';
 import {
   MercadoPagoPaymentResponse,
   MercadoPagoService,
@@ -99,31 +104,19 @@ type CartItem = {
   notes?: string;
 };
 
-const temporaryCartsByContext = new Map<string, CartItem[]>();
+type SaleOrderDetails = {
+  contactId?: number;
+  contactName: string;
+  contactEmail?: string;
+  discountCents: number;
+  shippingCents: number;
+  finalTotalCents: number;
+  notes: string;
+};
 
-const recentOrders = [
-  {
-    id: '#1048',
-    customer: 'Cliente recente',
-    source: 'Pedido manual',
-    status: 'Pago',
-    totalCents: 24990,
-  },
-  {
-    id: '#1047',
-    customer: 'Venda balcão',
-    source: 'Mercado Pago',
-    status: 'Pendente',
-    totalCents: 8990,
-  },
-  {
-    id: '#1046',
-    customer: 'Catálogo XML',
-    source: 'Olist/Bling',
-    status: 'Pago',
-    totalCents: 38490,
-  },
-];
+type SaleOrderAction = 'draft' | 'finish' | 'charge';
+
+const temporaryCartsByContext = new Map<string, CartItem[]>();
 
 const integrations = ['Mercado Pago', 'Asaas', 'Olist', 'Bling'];
 
@@ -170,6 +163,40 @@ const productPriceLabel = (product: ProductCatalogProduct) => {
   if (!product.currency || product.currency === 'BRL') return formatCurrency(priceCents);
 
   return [product.currency, product.price].filter(Boolean).join(' ');
+};
+
+const paymentStatusLabel = (status: PosOrderPaymentStatus) => {
+  const labels: Record<PosOrderPaymentStatus, string> = {
+    unpaid: 'Não pago',
+    pending: 'Pendente',
+    paid: 'Pago',
+    failed: 'Falhou',
+    refunded: 'Estornado',
+    expired: 'Expirado',
+  };
+
+  return labels[status] || 'Pendente';
+};
+
+const paymentMethodLabel = (method?: string | null) => {
+  if (!method) return 'Pedido manual';
+
+  const labels: Record<string, string> = {
+    pix: 'Pix',
+    credit_card: 'Cartão',
+    cash: 'Dinheiro',
+    payment_link: 'Link de pagamento',
+  };
+
+  return labels[method] || method;
+};
+
+const statusFilterMatches = (order: PosOrder, status: OrderStatus) => {
+  if (status === 'Todos') return true;
+  if (status === 'Pago') return order.paymentStatus === 'paid';
+  if (status === 'Cancelado') return order.status === 'cancelled';
+
+  return ['unpaid', 'pending'].includes(order.paymentStatus) && order.status !== 'cancelled';
 };
 
 const buildOrderSummaryMessage = ({
@@ -582,6 +609,7 @@ const SaleSummaryView = ({
   onSendSummary,
   onSaveForLater,
   onFinish,
+  onEnsureOrder,
 }: {
   cartItems: CartItem[];
   paymentMethod: PaymentMethod;
@@ -591,8 +619,9 @@ const SaleSummaryView = ({
   showBackHeader?: boolean;
   onBackPress: () => void;
   onSendSummary: (message: string) => Promise<void>;
-  onSaveForLater: () => void;
-  onFinish: () => void;
+  onSaveForLater: (details: SaleOrderDetails) => Promise<void>;
+  onFinish: (details: SaleOrderDetails) => Promise<void>;
+  onEnsureOrder: (details: SaleOrderDetails, action: SaleOrderAction) => Promise<PosOrder>;
 }) => {
   const defaultContactName = context?.contactName || 'Consumidor final';
   const [contactSearch, setContactSearch] = useState(defaultContactName);
@@ -603,7 +632,9 @@ const SaleSummaryView = ({
   const [notes, setNotes] = useState('');
   const [isSendingSummary, setIsSendingSummary] = useState(false);
   const [isGeneratingCharge, setIsGeneratingCharge] = useState(false);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [paymentCharge, setPaymentCharge] = useState<PaymentCharge | null>(null);
+  const [savedOrder, setSavedOrder] = useState<PosOrder | null>(null);
 
   useEffect(() => {
     const query = contactSearch.trim();
@@ -638,6 +669,29 @@ const SaleSummaryView = ({
     paymentCharge,
   });
 
+  const orderDetails = useMemo<SaleOrderDetails>(
+    () => ({
+      contactId: selectedContact?.id || context?.contactId,
+      contactName: contactSearch.trim() || defaultContactName,
+      contactEmail: selectedContact?.email || undefined,
+      discountCents,
+      shippingCents,
+      finalTotalCents,
+      notes,
+    }),
+    [
+      contactSearch,
+      context?.contactId,
+      defaultContactName,
+      discountCents,
+      finalTotalCents,
+      notes,
+      selectedContact?.email,
+      selectedContact?.id,
+      shippingCents,
+    ],
+  );
+
   const selectContact = (contact: Contact) => {
     setSelectedContact(contact);
     setContactSearch(contact.name || contact.email || contact.phoneNumber || '');
@@ -663,6 +717,8 @@ const SaleSummaryView = ({
 
     setIsGeneratingCharge(true);
     try {
+      const order = await onEnsureOrder(orderDetails, 'charge');
+      setSavedOrder(order);
       const charge = await MercadoPagoService.createPayment({
         kind: paymentMethod.id === 'pix' ? 'pix' : 'payment_link',
         amount_cents: finalTotalCents,
@@ -671,6 +727,7 @@ const SaleSummaryView = ({
         contact_name: contactSearch.trim() || defaultContactName,
         contact_email: selectedContact?.email || undefined,
         conversation_id: context?.conversationId,
+        pos_order_id: order.id,
         notes,
         items: cartItems.map(item => ({
           id: item.product.id,
@@ -689,6 +746,38 @@ const SaleSummaryView = ({
       );
     } finally {
       setIsGeneratingCharge(false);
+    }
+  };
+
+  const handleSaveForLaterPress = async () => {
+    if (isSavingOrder) return;
+
+    setIsSavingOrder(true);
+    try {
+      const order = await onEnsureOrder(orderDetails, 'draft');
+      setSavedOrder(order);
+      await onSaveForLater(orderDetails);
+    } catch (error) {
+      const serverError = ((error as AxiosError).response?.data as { error?: string })?.error;
+      Alert.alert('Falha ao salvar pedido', serverError || 'Não foi possível salvar o pedido.');
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
+  const handleFinishPress = async () => {
+    if (isSavingOrder) return;
+
+    setIsSavingOrder(true);
+    try {
+      const order = await onEnsureOrder(orderDetails, 'finish');
+      setSavedOrder(order);
+      await onFinish(orderDetails);
+    } catch (error) {
+      const serverError = ((error as AxiosError).response?.data as { error?: string })?.error;
+      Alert.alert('Falha ao finalizar venda', serverError || 'Não foi possível finalizar a venda.');
+    } finally {
+      setIsSavingOrder(false);
     }
   };
 
@@ -877,7 +966,9 @@ const SaleSummaryView = ({
                 <Text style={tailwind.style('pt-0.5 text-xs font-inter-normal-20 text-blue-900')}>
                   {paymentCharge
                     ? 'Pronto para copiar ou enviar ao cliente.'
-                    : 'Gerado com a conta Mercado Pago conectada.'}
+                    : savedOrder
+                      ? `Vinculado ao pedido #${savedOrder.id}.`
+                      : 'Gerado com a conta Mercado Pago conectada.'}
                 </Text>
               </View>
               <Pressable
@@ -961,22 +1052,30 @@ const SaleSummaryView = ({
         ) : null}
         <View style={tailwind.style('flex-row gap-2')}>
           <Pressable
-            onPress={onSaveForLater}
+            onPress={handleSaveForLaterPress}
+            disabled={isSavingOrder}
             style={tailwind.style(
               'h-12 flex-1 flex-row items-center justify-center rounded-[8px] border border-blue-800 bg-white',
+              isSavingOrder ? 'opacity-70' : '',
             )}>
             <Text style={tailwind.style('text-sm font-inter-semibold-24 text-blue-800')}>
               Salvar para depois
             </Text>
           </Pressable>
           <Pressable
-            onPress={onFinish}
+            onPress={handleFinishPress}
+            disabled={isSavingOrder}
             style={tailwind.style(
               'h-12 flex-1 flex-row items-center justify-center rounded-[8px] bg-blue-800',
+              isSavingOrder ? 'opacity-70' : '',
             )}>
-            <Icon icon={<TickIcon stroke={tailwind.color('text-white')} />} size={18} />
+            {isSavingOrder ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Icon icon={<TickIcon stroke={tailwind.color('text-white')} />} size={18} />
+            )}
             <Text style={tailwind.style('ml-2 text-sm font-inter-semibold-24 text-white')}>
-              Finalizar venda
+              {isSavingOrder ? 'Salvando...' : 'Finalizar venda'}
             </Text>
           </Pressable>
         </View>
@@ -1022,6 +1121,7 @@ const CheckoutView = ({
   const [editingName, setEditingName] = useState('');
   const [editingNotes, setEditingNotes] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [currentOrder, setCurrentOrder] = useState<PosOrder | null>(null);
 
   const fetchCatalog = useCallback(async () => {
     try {
@@ -1051,6 +1151,7 @@ const CheckoutView = ({
     if (contextCartKey) {
       temporaryCartsByContext.set(contextCartKey, cartItems);
     }
+    setCurrentOrder(null);
   }, [cartItems, contextCartKey]);
 
   const appendAmount = (token: string) => {
@@ -1256,23 +1357,83 @@ const CheckoutView = ({
     onCheckoutStepChange('summary');
   };
 
-  const handleFinishSale = () => {
+  const buildOrderInput = useCallback(
+    (details: SaleOrderDetails, action: SaleOrderAction): PosOrderInput => {
+      const shouldWaitForProvider =
+        action === 'charge' ||
+        selectedPaymentMethod?.id === 'pix' ||
+        selectedPaymentMethod?.id === 'payment_link';
+
+      return {
+        contactId: details.contactId,
+        conversationId: context?.conversationId,
+        customerName: details.contactName,
+        status: action === 'draft' ? 'draft' : action === 'finish' ? 'completed' : 'open',
+        paymentStatus: action === 'draft' ? 'unpaid' : shouldWaitForProvider ? 'pending' : 'paid',
+        paymentMethod: selectedPaymentMethod?.id,
+        paymentProvider: shouldWaitForProvider ? 'mercado_pago' : undefined,
+        discountCents: details.discountCents,
+        shippingCents: details.shippingCents,
+        currency: 'BRL',
+        notes: details.notes,
+        items: cartItems.map((item, index) => ({
+          id: currentOrder?.items[index]?.id,
+          name: item.customName || item.product.name,
+          description: item.notes || item.product.description,
+          quantity: item.quantity,
+          unitPriceCents: priceToCents(item.product.price),
+          currency: item.product.currency || 'BRL',
+          metadata: {
+            product_id: item.product.id,
+            retailer_id: item.product.retailerId,
+            source: item.product.id.toString().startsWith('custom-') ? 'manual' : 'catalog',
+          },
+        })),
+        metadata: {
+          contact_email: details.contactEmail,
+          source: context?.conversationId ? 'conversation_pos' : 'mobile_pos',
+        },
+      };
+    },
+    [cartItems, context?.conversationId, currentOrder?.items, selectedPaymentMethod?.id],
+  );
+
+  const ensureOrder = useCallback(
+    async (details: SaleOrderDetails, action: SaleOrderAction) => {
+      const orderInput = buildOrderInput(details, action);
+      const order = currentOrder
+        ? await PointOfSaleService.updateOrder(currentOrder.id, orderInput)
+        : await PointOfSaleService.createOrder(orderInput);
+
+      setCurrentOrder(order);
+      return order;
+    },
+    [buildOrderInput, currentOrder],
+  );
+
+  const resetCheckout = () => {
     setCartItems([]);
     if (contextCartKey) {
       temporaryCartsByContext.delete(contextCartKey);
     }
+    setCurrentOrder(null);
     setSelectedPaymentMethod(null);
     onCheckoutStepChange('cart');
-    Alert.alert('Venda finalizada', 'Pedido registrado localmente para este MVP.');
   };
 
-  const handleSaveForLater = () => {
+  const handleFinishSale = async () => {
+    resetCheckout();
+    showToast({ message: 'Venda finalizada.' });
+  };
+
+  const handleSaveForLater = async () => {
     if (contextCartKey) {
       temporaryCartsByContext.set(contextCartKey, cartItems);
     }
+    setCurrentOrder(null);
     setSelectedPaymentMethod(null);
     onCheckoutStepChange('cart');
-    Alert.alert('Pedido salvo', 'Pedido salvo como rascunho local para este MVP.');
+    showToast({ message: 'Pedido salvo para depois.' });
   };
 
   const handleSendSummary = async (message: string) => {
@@ -1324,6 +1485,7 @@ const CheckoutView = ({
         onSendSummary={handleSendSummary}
         onSaveForLater={handleSaveForLater}
         onFinish={handleFinishSale}
+        onEnsureOrder={ensureOrder}
       />
     );
   }
@@ -1521,59 +1683,99 @@ const CheckoutView = ({
   );
 };
 
-const getMetricItems = (context?: PointOfSaleContext) =>
-  context
-    ? [
-        {
-          title: 'Faturamento',
-          value: formatCurrency(83970),
-          caption: 'Histórico do cliente',
-        },
-        {
-          title: 'Ticket médio',
-          value: formatCurrency(16794),
-          caption: '5 compras',
-        },
-        {
-          title: 'Pedidos',
-          value: '5',
-          caption: '3 pagos e 2 pendentes',
-        },
-        {
-          title: 'Follow-ups',
-          value: '2',
-          caption: 'Tarefas vinculadas',
-        },
-      ]
-    : [
-        {
-          title: 'Faturamento',
-          value: formatCurrency(184920),
-          caption: 'Hoje',
-        },
-        {
-          title: 'Ticket médio',
-          value: formatCurrency(15410),
-          caption: '12 vendas',
-        },
-        {
-          title: 'Clientes',
-          value: '38',
-          caption: 'Atendidos no período',
-        },
-        {
-          title: 'Tarefas concluídas',
-          value: '24',
-          caption: 'Follow-ups e agenda',
-        },
-      ];
-
 const MetricsView = ({ context }: { context?: PointOfSaleContext }) => {
-  const metricItems = getMetricItems(context);
+  const [orders, setOrders] = useState<PosOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadOrders = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const fetchedOrders = await PointOfSaleService.getOrders({
+        contactId: context?.contactId,
+        conversationId: context?.contactId ? undefined : context?.conversationId,
+      });
+      setOrders(fetchedOrders);
+    } catch {
+      setOrders([]);
+      setError('Não foi possível carregar as métricas.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [context?.contactId, context?.conversationId]);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  const paidOrders = useMemo(
+    () => orders.filter(order => order.paymentStatus === 'paid' && order.status !== 'cancelled'),
+    [orders],
+  );
+  const revenueCents = useMemo(
+    () => paidOrders.reduce((total, order) => total + order.totalCents, 0),
+    [paidOrders],
+  );
+  const pendingOrdersCount = useMemo(
+    () =>
+      orders.filter(
+        order =>
+          order.status !== 'cancelled' && ['unpaid', 'pending'].includes(order.paymentStatus),
+      ).length,
+    [orders],
+  );
+  const customerCount = useMemo(() => {
+    const customers = new Set(
+      orders.map(order => order.contactId || order.customerName).filter(Boolean),
+    );
+    return customers.size;
+  }, [orders]);
+
+  const metricItems = [
+    {
+      title: 'Faturamento',
+      value: formatCurrency(revenueCents),
+      caption: context ? 'Histórico do cliente' : 'Pedidos pagos',
+    },
+    {
+      title: 'Ticket médio',
+      value: formatCurrency(paidOrders.length ? Math.round(revenueCents / paidOrders.length) : 0),
+      caption: `${paidOrders.length} ${paidOrders.length === 1 ? 'venda paga' : 'vendas pagas'}`,
+    },
+    {
+      title: context ? 'Pedidos' : 'Clientes',
+      value: context ? String(orders.length) : String(customerCount),
+      caption: context ? `${pendingOrdersCount} em aberto` : 'Com pedidos no PDV',
+    },
+    {
+      title: 'Pendentes',
+      value: String(pendingOrdersCount),
+      caption: 'Aguardando pagamento',
+    },
+  ];
 
   return (
     <ScrollView contentContainerStyle={tailwind.style('pb-28')}>
-      <SectionTitle title={context ? 'Resumo do cliente' : 'Resumo'} action="Mock" />
+      <SectionTitle title={context ? 'Resumo do cliente' : 'Resumo'} action="Real" />
+      {isLoading ? (
+        <Text style={tailwind.style('px-4 py-3 text-sm font-inter-normal-20 text-gray-700')}>
+          Carregando métricas...
+        </Text>
+      ) : null}
+      {!isLoading && error ? (
+        <View
+          style={tailwind.style(
+            'mx-4 mb-3 rounded-[8px] border border-amber-200 bg-amber-50 px-3 py-3',
+          )}>
+          <Text style={tailwind.style('text-sm font-inter-medium-24 text-amber-900')}>{error}</Text>
+          <Pressable onPress={loadOrders} hitSlop={8}>
+            <Text style={tailwind.style('pt-2 text-sm font-inter-semibold-24 text-blue-800')}>
+              Tentar novamente
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
       <View style={tailwind.style('flex-row flex-wrap px-3')}>
         {metricItems.map(item => (
           <View key={item.title} style={tailwind.style('w-1/2 px-1 pb-2')}>
@@ -1601,18 +1803,18 @@ const MetricsView = ({ context }: { context?: PointOfSaleContext }) => {
       </View>
 
       <SectionTitle title={context ? 'Últimos movimentos' : 'Últimos indicadores'} />
-      {(context
-        ? [
-            ['Última compra', 'Pedido pago há 12 dias'],
-            ['Pedido em aberto', '2 aguardando pagamento'],
-            ['Carrinho temporário', 'Mantido para esta conversa'],
-          ]
-        : [
-            ['Vendas pagas', '9 pedidos confirmados'],
-            ['Pedidos pendentes', '3 aguardando pagamento'],
-            ['Novos clientes', '6 contatos criados hoje'],
-          ]
-      ).map(([title, description]) => (
+      {[
+        ['Vendas pagas', `${paidOrders.length} pedidos confirmados`],
+        ['Pedidos pendentes', `${pendingOrdersCount} aguardando pagamento`],
+        [
+          context ? 'Carrinho temporário' : 'Total de pedidos',
+          context
+            ? temporaryCartsByContext.has(`conversation:${context.conversationId}`)
+              ? 'Mantido para esta conversa'
+              : 'Nenhum carrinho salvo'
+            : `${orders.length} registrados`,
+        ],
+      ].map(([title, description]) => (
         <View
           key={title}
           style={tailwind.style(
@@ -1633,20 +1835,37 @@ const MetricsView = ({ context }: { context?: PointOfSaleContext }) => {
 const OrdersView = ({ context }: { context?: PointOfSaleContext }) => {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<OrderStatus>('Todos');
+  const [orders, setOrders] = useState<PosOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const orders = useMemo(() => {
-    if (!context) return recentOrders;
+  const loadOrders = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const fetchedOrders = await PointOfSaleService.getOrders({
+        contactId: context?.contactId,
+        conversationId: context?.contactId ? undefined : context?.conversationId,
+      });
+      setOrders(fetchedOrders);
+    } catch {
+      setOrders([]);
+      setError('Não foi possível carregar os pedidos.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [context?.contactId, context?.conversationId]);
 
-    return recentOrders.map(order => ({
-      ...order,
-      customer: context.contactName,
-    }));
-  }, [context]);
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
 
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
-      const matchesStatus = status === 'Todos' || order.status === status;
-      const matchesSearch = `${order.id} ${order.customer} ${order.source}`
+      const matchesStatus = statusFilterMatches(order, status);
+      const matchesSearch = `#${order.id} ${order.customerName} ${paymentMethodLabel(
+        order.paymentMethod,
+      )} ${paymentStatusLabel(order.paymentStatus)}`
         .toLowerCase()
         .includes(search.toLowerCase());
       return matchesStatus && matchesSearch;
@@ -1705,6 +1924,32 @@ const OrdersView = ({ context }: { context?: PointOfSaleContext }) => {
       </ScrollView>
 
       <SectionTitle title="Pedidos recentes" />
+      {isLoading ? (
+        <Text style={tailwind.style('px-4 py-3 text-sm font-inter-normal-20 text-gray-700')}>
+          Carregando pedidos...
+        </Text>
+      ) : null}
+      {!isLoading && error ? (
+        <View
+          style={tailwind.style(
+            'mx-4 mb-3 rounded-[8px] border border-amber-200 bg-amber-50 px-3 py-3',
+          )}>
+          <Text style={tailwind.style('text-sm font-inter-medium-24 text-amber-900')}>{error}</Text>
+          <Pressable onPress={loadOrders} hitSlop={8}>
+            <Text style={tailwind.style('pt-2 text-sm font-inter-semibold-24 text-blue-800')}>
+              Tentar novamente
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {!isLoading && !error && filteredOrders.length === 0 ? (
+        <View
+          style={tailwind.style('mx-4 rounded-[8px] border border-blackA-A3 bg-white px-3 py-4')}>
+          <Text style={tailwind.style('text-sm font-inter-normal-20 text-gray-700')}>
+            Nenhum pedido encontrado.
+          </Text>
+        </View>
+      ) : null}
       {filteredOrders.map(order => (
         <View
           key={order.id}
@@ -1713,7 +1958,7 @@ const OrdersView = ({ context }: { context?: PointOfSaleContext }) => {
           )}>
           <View style={tailwind.style('flex-row items-center justify-between')}>
             <Text style={tailwind.style('text-sm font-inter-semibold-24 text-gray-950')}>
-              {order.id}
+              #{order.id}
             </Text>
             <Text style={tailwind.style('text-sm font-inter-semibold-24 text-gray-950')}>
               {formatCurrency(order.totalCents)}
@@ -1722,18 +1967,22 @@ const OrdersView = ({ context }: { context?: PointOfSaleContext }) => {
           <Text
             numberOfLines={1}
             style={tailwind.style('pt-1 text-sm font-inter-medium-24 text-gray-950')}>
-            {order.customer}
+            {order.customerName}
           </Text>
           <View style={tailwind.style('mt-2 flex-row items-center justify-between')}>
             <Text style={tailwind.style('text-xs font-inter-normal-20 text-gray-700')}>
-              {order.source}
+              {paymentMethodLabel(order.paymentMethod)}
             </Text>
             <Text
               style={tailwind.style(
                 'text-xs font-inter-semibold-24',
-                order.status === 'Pago' ? 'text-green-700' : 'text-amber-800',
+                order.paymentStatus === 'paid'
+                  ? 'text-green-700'
+                  : order.status === 'cancelled'
+                    ? 'text-red-700'
+                    : 'text-amber-800',
               )}>
-              {order.status}
+              {order.status === 'cancelled' ? 'Cancelado' : paymentStatusLabel(order.paymentStatus)}
             </Text>
           </View>
         </View>

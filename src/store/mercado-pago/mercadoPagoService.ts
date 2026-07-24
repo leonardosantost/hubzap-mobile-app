@@ -21,6 +21,7 @@ export type MercadoPagoPaymentPayload = {
   contact_name?: string;
   contact_email?: string;
   conversation_id?: number;
+  pos_order_id?: number;
   items: {
     id: string | number;
     title: string;
